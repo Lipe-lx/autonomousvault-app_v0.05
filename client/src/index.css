@@ -1,0 +1,354 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Swiss Minimalist Dark Theme */
+    --background: 230 15% 6%;
+    /* #0f1015 - Deep dark base */
+    --foreground: 220 13% 91%;
+    /* #e4e5e9 - Clean white */
+
+    --card: 230 12% 9%;
+    /* #14151a - Card background */
+    --card-foreground: 220 13% 91%;
+
+    --popover: 230 12% 9%;
+    --popover-foreground: 220 13% 91%;
+
+    --primary: 262 83% 75%;
+    /* #9b87f5 - Solana Purple */
+    --primary-foreground: 230 15% 6%;
+
+    --secondary: 230 10% 14%;
+    /* #1f2028 - Subtle secondary */
+    --secondary-foreground: 220 13% 91%;
+
+    --muted: 230 10% 14%;
+    --muted-foreground: 220 10% 50%;
+    /* #747580 - Muted text */
+
+    --accent: 230 10% 14%;
+    --accent-foreground: 220 13% 91%;
+
+    --destructive: 0 62% 50%;
+    /* Red for errors */
+    --destructive-foreground: 220 13% 91%;
+
+    --border: 230 10% 16%;
+    /* #232328 - Subtle borders */
+    --input: 230 10% 14%;
+    --ring: 262 83% 75%;
+
+    /* Swiss Minimalist: Sharper corners */
+    --radius: 0.25rem;
+
+    /* Network Colors */
+    --solana: 262 83% 75%;
+    /* #9b87f5 - Purple */
+    --hyperliquid: 160 84% 52%;
+    /* #34d399 - Emerald */
+    --polymarket: 213 94% 68%;
+    /* #60a5fa - Blue */
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Swiss Typography Base */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+/* Swiss Label Style */
+.swiss-label {
+  @apply text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500;
+}
+
+/* Markdown Content Styles */
+.markdown-content {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.markdown-content p {
+  margin-bottom: 0.75rem;
+}
+
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #e4e5e9;
+  letter-spacing: -0.01em;
+}
+
+.markdown-content h1 {
+  font-size: 1.5rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.25rem;
+}
+
+.markdown-content h3 {
+  font-size: 1.1rem;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+  list-style-position: outside;
+}
+
+.markdown-content ul {
+  list-style-type: disc;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-content strong {
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.markdown-content a {
+  color: #E7FE55;
+  text-decoration: none;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+
+.markdown-content code {
+  background-color: rgba(35, 35, 40, 0.8);
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.125rem;
+  font-family: "SF Mono", Monaco, monospace;
+  font-size: 0.9em;
+  color: #e4e5e9;
+}
+
+.markdown-content pre {
+  background-color: rgba(20, 21, 26, 0.9);
+  padding: 1rem;
+  border-radius: 0.25rem;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(35, 35, 40, 0.8);
+}
+
+.markdown-content pre code {
+  background-color: transparent;
+  padding: 0;
+  color: #e4e5e9;
+  font-size: 0.85rem;
+}
+
+.markdown-content blockquote {
+  border-left: 2px solid #E7FE55;
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-bottom: 1rem;
+  color: #747580;
+  font-style: italic;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid #232328;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.markdown-content th {
+  background-color: rgba(35, 35, 40, 0.5);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+/* Custom Minimalist Scrollbar - Swiss Style */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(100, 100, 120, 0.2);
+  border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 120, 0.4);
+}
+
+/* Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 100, 120, 0.2) transparent;
+}
+
+/* Glass Panel Effect - Soft, visible with subtle hover */
+.glass-panel {
+  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  border: 1px solid rgba(60, 63, 75, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  transition: all 0.2s ease;
+}
+
+.glass-panel:hover {
+  background: linear-gradient(180deg, rgba(35, 37, 46, 0.98) 0%, rgba(28, 30, 38, 0.95) 100%);
+  border-color: rgba(80, 84, 100, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Glass Panel Non-Hoverable (for nested elements) */
+.glass-panel-static {
+  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  border: 1px solid rgba(60, 63, 75, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Glass Panel Interactive (stronger hover for buttons/cards) */
+.glass-panel-interactive {
+  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  border: 1px solid rgba(60, 63, 75, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.glass-panel-interactive:hover {
+  background: linear-gradient(180deg, rgba(40, 42, 52, 1) 0%, rgba(32, 34, 44, 0.98) 100%);
+  border-color: rgba(100, 105, 125, 0.6);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Network-specific Glass Panels with colored hover */
+.glass-panel-solana {
+  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  border: 1px solid rgba(155, 135, 245, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.glass-panel-solana:hover {
+  border-color: rgba(155, 135, 245, 0.4);
+  box-shadow: 0 4px 16px rgba(155, 135, 245, 0.1);
+}
+
+.glass-panel-hyperliquid {
+  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.glass-panel-hyperliquid:hover {
+  border-color: rgba(52, 211, 153, 0.4);
+  box-shadow: 0 4px 16px rgba(52, 211, 153, 0.1);
+}
+
+.glass-panel-polymarket {
+  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.glass-panel-polymarket:hover {
+  border-color: rgba(96, 165, 250, 0.4);
+  box-shadow: 0 4px 16px rgba(96, 165, 250, 0.1);
+}
+
+/* Animation utilities */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Swiss Status Indicator */
+.status-dot {
+  @apply w-1.5 h-1.5 rounded-full;
+}
+
+.status-dot-online {
+  @apply bg-[#34d399];
+}
+
+.status-dot-offline {
+  @apply bg-red-500;
+}
+
+/* Swiss Table Styles */
+.swiss-table {
+  @apply w-full text-left;
+}
+
+.swiss-table th {
+  @apply text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 py-3 border-b border-[#232328];
+}
+
+.swiss-table td {
+  @apply py-3 text-sm text-slate-300 border-b border-[#232328]/50;
+}
+
+.swiss-table tr:last-child td {
+  @apply border-b-0;
+}
+
+.swiss-table tr:hover {
+  @apply bg-[#1a1b21];
+}
