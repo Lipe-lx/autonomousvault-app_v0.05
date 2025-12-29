@@ -1,5 +1,6 @@
 import { VaultState } from '../types';
 import { StorageService } from '../services/storageService';
+import type { SecurityTier } from '../services/securityTierService';
 
 // --- Types ---
 
@@ -288,6 +289,9 @@ export interface DealerState {
     statusMessage: string;
     statusDetail: string; // Detailed step description for user feedback
 
+    // Execution mode (security tier)
+    executionMode: SecurityTier; // 'local' | 'session' | 'persistent'
+
     // Live execution data
     currentTask: string | null;
     currentSignal: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | null;
@@ -347,6 +351,7 @@ const INITIAL_STATE: DealerState = {
     isAnalyzing: false,
     statusMessage: 'Ready',
     statusDetail: 'Awaiting activation',
+    executionMode: 'local', // Default to most secure tier
     currentTask: null,
     currentSignal: null,
     trendAssessment: 'Waiting for data...',

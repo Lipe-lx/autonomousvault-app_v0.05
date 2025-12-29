@@ -20,6 +20,7 @@ import { ConversationService, Conversation } from '../../services/conversationSe
 import { dealerStore } from '../../state/dealerStore';
 import { polymarketStore } from '../../state/polymarketStore';
 import { cn } from '@/lib/utils';
+import { SecurityTierSelector } from './SecurityTierSelector';
 
 // Keys that are safe to export (non-sensitive)
 const EXPORTABLE_KEYS = [
@@ -423,6 +424,13 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
         >
+            {/* Security Tier Section */}
+            <div className="glass-panel p-5 rounded">
+                <SecurityTierSelector
+                    onTierChange={(tier) => addNotification(`Security tier changed to ${tier}`)}
+                />
+            </div>
+
             {/* Legal Links Section */}
             <div className="glass-panel p-5 rounded">
                 <div className="flex items-center gap-2 mb-4">

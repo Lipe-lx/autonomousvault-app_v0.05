@@ -6,6 +6,9 @@ import { marketDataMCP } from '../mcp/marketData/marketDataMCP';
 import { aiService } from './aiService';
 import { backgroundTimer } from './backgroundTimer';
 import { keepAlive } from './keepAlive';
+import { supabaseDealerClient } from './supabaseDealerClient';
+import { securityTierService } from './securityTierService';
+import { aiConfigStore } from '../state/aiConfigStore';
 
 // Timer IDs for background-safe timers
 const DEALER_TIMER_ID = 'hyperliquid-dealer-cycle';
@@ -167,6 +170,104 @@ export class DealerService {
             this.stopLoop();
             return;
         }
+
+        // 2. Check execution mode - delegate to Supabase for Tier B/C
+        const currentTier = securityTierService.getCurrentTier();
+        if (currentTier === 'session' || currentTier === 'persistent') {
+            return this.runSupabaseCycle();
+        }
+
+        // 3. Tier A (local) - run locally
+        return this.runLocalCycle();
+    }
+
+    /**
+     * Run cycle via Supabase Edge Function (Tier B/C)
+     */
+    private async runSupabaseCycle() {
+        const state = dealerStore.getSnapshot();
+
+        dealerStore.setAnalyzing(true);
+        dealerStore.updateStatus(
+            '☁️ Supabase Cycle',
+            null,
+            'Executing via Edge Function...',
+            undefined,
+            `Mode: ${state.executionMode}`
+        );
+
+
+
+        // Get AI Config for Dealer
+        const componentConfig = aiConfigStore.getComponentConfig('hyperliquidDealer');
+        const apiKey = aiConfigStore.getComponentApiKey('hyperliquidDealer');
+        const aiConfig = {
+            provider: componentConfig.providerType,
+            apiKey: apiKey,
+            modelId: componentConfig.modelId,
+            systemPrompt: state.settings.strategyPrompt
+        };
+
+        try {
+            const result = await supabaseDealerClient.runCycle({
+                coins: state.settings.tradingPairs,
+                settings: {
+                    intervalMs: state.settings.checkIntervalSeconds * 1000,
+                    maxPositions: state.settings.maxOpenPositions,
+                    maxLeverage: state.settings.maxLeverage,
+                    slPercent: state.settings.stopLossPercent ?? undefined,
+                    tpPercent: state.settings.takeProfitPercent ?? undefined,
+                    indicatorSettings: state.settings.indicatorSettings,
+                    strategyPrompt: state.settings.strategyPrompt
+                },
+                aiConfig: aiConfig,
+                executeTradesIfSignal: true
+            });
+
+            if (result.success) {
+                // Log decisions
+                for (const decision of result.decisions) {
+                    const emoji = decision.action === 'BUY' ? '📈' :
+                        decision.action === 'SELL' ? '📉' :
+                            decision.action === 'CLOSE' ? '🔄' : '⏸️';
+
+                    dealerStore.addLog(
+                        decision.executed ? 'TRADE' : 'SIGNAL',
+                        `${emoji} ${decision.coin}: ${decision.action} (${(decision.confidence * 100).toFixed(0)}%)${decision.executed ? ' ✅' : ''}`,
+                        { fullReason: decision.reason, orderId: decision.orderId, error: decision.error }
+                    );
+                }
+
+                dealerStore.updateStatus(
+                    '⏳ Waiting',
+                    null,
+                    `Supabase cycle complete. ${result.decisions.length} decisions.`,
+                    undefined,
+                    `Cycles remaining: ${result.usage.cyclesRemaining}`
+                );
+            } else {
+                throw new Error(result.error || 'Supabase cycle failed');
+            }
+        } catch (error: any) {
+            console.error('[DealerService] Supabase cycle error:', error);
+            dealerStore.addLog('ERROR', `Supabase cycle failed: ${error.message}`);
+            dealerStore.updateStatus(
+                '❌ Error',
+                null,
+                error.message,
+                undefined,
+                'Will retry next interval'
+            );
+        } finally {
+            dealerStore.setAnalyzing(false);
+        }
+    }
+
+    /**
+     * Run cycle locally (Tier A) - original implementation
+     */
+    private async runLocalCycle() {
+        const state = dealerStore.getSnapshot();
 
         // Create new AbortController for this cycle
         this.currentCycleAbortController = new AbortController();
