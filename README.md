@@ -2,7 +2,7 @@
 
 Non-custodial autonomous trading application.
 
-## Architecture
+## Architecture (v0.05)
 
 ```
 autonomousvault-app/
