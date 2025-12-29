@@ -1,17 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import {
-    User,
-    onAuthStateChanged,
-    signInWithPopup,
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    signOut,
-} from 'firebase/auth';
-import { auth, googleProvider } from '../services/firebase';
+import { supabaseAuth, SupabaseUser } from '../services/supabase/auth.service';
+import { initializeSupabase, isSupabaseConfigured } from '../services/supabase/client';
 import { StorageService } from '../services/storageService';
 import { aiConfigStore } from '../state/aiConfigStore';
 import { dealerStore } from '../state/dealerStore';
 import { polymarketStore } from '../state/polymarketStore';
+
+// User type compatible with the rest of the app
+export interface User {
+    uid: string;
+    email: string | null;
+    displayName: string | null;
+    photoURL: string | null;
+    emailVerified: boolean;
+}
 
 interface AuthContextType {
     user: User | null;
@@ -32,6 +34,20 @@ export function useAuth(): AuthContextType {
     return context;
 }
 
+/**
+ * Convert SupabaseUser to our User format (compatible with Firebase User interface)
+ */
+function mapToUser(supabaseUser: SupabaseUser | null): User | null {
+    if (!supabaseUser) return null;
+    return {
+        uid: supabaseUser.id,
+        email: supabaseUser.email,
+        displayName: supabaseUser.displayName,
+        photoURL: supabaseUser.photoURL,
+        emailVerified: supabaseUser.emailVerified
+    };
+}
+
 interface AuthProviderProps {
     children: ReactNode;
 }
@@ -40,29 +56,60 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Listen to auth state changes
+    // Initialize Supabase and listen to auth state changes
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            setUser(user);
+        const initAuth = async () => {
+            // Check if Supabase is configured
+            if (!isSupabaseConfigured()) {
+                console.warn('[AuthContext] Supabase not configured. Auth will not work until configured.');
+                setLoading(false);
+                return;
+            }
+
+            // Initialize Supabase client
+            await initializeSupabase();
+
+            // Initialize auth service
+            await supabaseAuth.initialize();
+
+            // Get initial user
+            const currentUser = mapToUser(supabaseAuth.getUser());
+            setUser(currentUser);
+
             // Set user context for StorageService (user-scoped storage)
-            StorageService.setUserId(user?.uid || null);
+            StorageService.setUserId(currentUser?.uid || null);
+
+            if (currentUser?.uid) {
+                await StorageService.migrateToUserScoped();
+                await aiConfigStore.reload();
+                await dealerStore.reloadFromStorage();
+                await polymarketStore.reloadFromStorage();
+            }
+
+            setLoading(false);
+        };
+
+        initAuth();
+
+        // Subscribe to auth state changes
+        const unsubscribe = supabaseAuth.onAuthStateChange(async (supabaseUser) => {
+            const mappedUser = mapToUser(supabaseUser);
+            setUser(mappedUser);
+
+            // Set user context for StorageService (user-scoped storage)
+            StorageService.setUserId(mappedUser?.uid || null);
 
             // Migrate legacy unscoped data to user-scoped keys and reload stores
-            if (user?.uid) {
+            if (mappedUser?.uid) {
                 await StorageService.migrateToUserScoped();
-                // Reload aiConfigStore to get API keys with correct user-scoped key
                 await aiConfigStore.reload();
-                // Reload dealer stores to get user settings
                 await dealerStore.reloadFromStorage();
                 await polymarketStore.reloadFromStorage();
             } else {
                 // User logged out - reset stores to clear data
                 dealerStore.reset();
                 polymarketStore.reset();
-                // We might want to clear local storage that was scoped? No, just reset in-memory.
             }
-
-            setLoading(false);
         });
 
         // Cleanup subscription
@@ -71,7 +118,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const signInWithGoogle = async () => {
         try {
-            await signInWithPopup(auth, googleProvider);
+            await supabaseAuth.signInWithGoogle();
         } catch (error) {
             console.error('Google sign-in error:', error);
             throw error;
@@ -80,7 +127,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const signInWithEmail = async (email: string, password: string) => {
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            await supabaseAuth.signInWithEmail(email, password);
         } catch (error) {
             console.error('Email sign-in error:', error);
             throw error;
@@ -89,7 +136,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const signUp = async (email: string, password: string) => {
         try {
-            await createUserWithEmailAndPassword(auth, email, password);
+            await supabaseAuth.signUp(email, password);
         } catch (error) {
             console.error('Sign-up error:', error);
             throw error;
@@ -98,7 +145,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const logout = async () => {
         try {
-            await signOut(auth);
+            await supabaseAuth.logout();
         } catch (error) {
             console.error('Logout error:', error);
             throw error;
