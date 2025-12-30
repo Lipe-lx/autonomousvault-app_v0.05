@@ -185,13 +185,13 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ vault, pas
                     /* Two Column Masonry Layout */
                     <div className="columns-1 lg:columns-2 gap-6 space-y-6">
                         {/* AI Providers Section */}
-                        <section className="rounded-lg border border-gray-800/60 overflow-hidden break-inside-avoid">
-                            <div className="px-6 py-4 border-b border-gray-800/60 flex items-center justify-between">
+                        <section className="glass-panel rounded break-inside-avoid">
+                            <div className="px-6 py-4 border-b border-gray-800/60 flex items-center justify-between font-light">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-gray-800/30 rounded-lg">
+                                    <div className="p-2 bg-gray-800/30 rounded">
                                         <Cpu className="h-4 w-4 text-white" />
                                     </div>
-                                    <h2 className="text-sm font-medium text-gray-200 tracking-wide">AI Providers</h2>
+                                    <h2 className="text-sm font-bold text-white tracking-wide">AI Providers</h2>
                                 </div>
                                 {/* Provider status dots */}
                                 <div className="flex items-center gap-2">
@@ -305,14 +305,14 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ vault, pas
                         </section>
 
                         {/* Networks Section - Always Visible */}
-                        <section className="rounded-lg border border-gray-800/60 overflow-hidden break-inside-avoid">
+                        <section className="glass-panel rounded break-inside-avoid">
                             <div className="px-6 py-4 border-b border-gray-800/60 flex items-center gap-3">
-                                <div className="p-2 bg-gray-800/30 rounded-lg">
+                                <div className="p-2 bg-gray-800/30 rounded">
                                     <Globe className="h-4 w-4 text-white" />
                                 </div>
                                 <div className="text-left">
-                                    <h2 className="text-sm font-medium text-gray-200 tracking-wide">Network Settings</h2>
-                                    <p className="text-xs text-gray-500">Configure blockchain connections</p>
+                                    <h2 className="text-sm font-bold text-white tracking-wide">Network Settings</h2>
+                                    <p className="text-[11px] text-gray-500 mt-0.5 font-light">Configure blockchain connections</p>
                                 </div>
                             </div>
 
@@ -386,12 +386,12 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ vault, pas
                         </section>
 
                         {/* Component Model Assignment */}
-                        <section className="rounded-lg border border-gray-800/60 overflow-hidden break-inside-avoid">
+                        <section className="glass-panel rounded break-inside-avoid">
                             <div className="px-6 py-4 border-b border-gray-800/60 flex items-center gap-3">
-                                <div className="p-2 bg-gray-800/30 rounded-lg">
+                                <div className="p-2 bg-gray-800/30 rounded">
                                     <Activity className="h-4 w-4 text-white" />
                                 </div>
-                                <h2 className="text-sm font-medium text-gray-200 tracking-wide">Model Assignment</h2>
+                                <h2 className="text-sm font-bold text-white tracking-wide">Model Assignment</h2>
                             </div>
 
                             <div className="p-6">

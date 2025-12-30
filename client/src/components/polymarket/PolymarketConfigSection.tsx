@@ -82,7 +82,7 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                 <div className="flex flex-col gap-4">
 
                     {/* Engine Status Card */}
-                    <div className="glass-panel p-4">
+                    <div className="glass-panel p-4 rounded">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className={`h-10 w-10 rounded flex items-center justify-center ${isOn ? 'bg-[#E7FE55]/15 text-[#E7FE55]' : 'bg-[#1a1b21] text-[#747580]'}`}>
@@ -129,8 +129,8 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                     </div>
 
                     {/* Strategy Preset Card */}
-                    <div className="glass-panel p-4">
-                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-semibold uppercase tracking-[0.1em] mb-3">
+                    <div className="glass-panel p-4 rounded">
+                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-bold uppercase tracking-wide mb-3">
                             <Sparkles className="h-3.5 w-3.5" /> Strategy Preset
                         </div>
                         <div className="grid grid-cols-2 gap-2">
@@ -156,8 +156,8 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                     </div>
 
                     {/* Capital & Risk Card */}
-                    <div className="glass-panel p-4">
-                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-semibold uppercase tracking-[0.1em] mb-3">
+                    <div className="glass-panel p-4 rounded">
+                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-bold uppercase tracking-wide mb-3">
                             <DollarSign className="h-3.5 w-3.5" /> Capital & Risk
                         </div>
 
@@ -217,8 +217,8 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                     </div>
 
                     {/* Analysis Settings Card */}
-                    <div className="glass-panel p-4">
-                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-semibold uppercase tracking-[0.1em] mb-3">
+                    <div className="glass-panel p-4 rounded">
+                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-bold uppercase tracking-wide mb-3">
                             <Clock className="h-3.5 w-3.5" /> Analysis Settings
                         </div>
                         <div className="grid grid-cols-3 gap-3">
@@ -269,9 +269,9 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                 <div className="flex flex-col gap-4">
 
                     {/* Market Categories Card */}
-                    <div className="glass-panel p-4">
+                    <div className="glass-panel p-4 rounded">
                         <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-semibold uppercase tracking-[0.1em]">
+                            <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-bold uppercase tracking-wide">
                                 <Filter className="h-3.5 w-3.5" /> Market Categories
                             </div>
                             <span className="text-[10px] bg-[#E7FE55]/15 text-[#E7FE55] px-2 py-0.5 rounded border border-[#E7FE55]/30 font-mono">
@@ -297,8 +297,8 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                     </div>
 
                     {/* Market Filters Card */}
-                    <div className="glass-panel p-4">
-                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-semibold uppercase tracking-[0.1em] mb-3">
+                    <div className="glass-panel p-4 rounded">
+                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-bold uppercase tracking-wide mb-3">
                             <TrendingUp className="h-3.5 w-3.5" /> Market Filters
                         </div>
 
@@ -334,7 +334,7 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                     </div>
 
                     {/* Info Box */}
-                    <div className="glass-panel p-4 flex items-start gap-3">
+                    <div className="glass-panel p-4 rounded flex items-start gap-3">
                         <AlertCircle className="h-4 w-4 text-[#E7FE55] shrink-0 mt-0.5" />
                         <div>
                             <p className="text-[10px] text-[#747580] leading-relaxed">

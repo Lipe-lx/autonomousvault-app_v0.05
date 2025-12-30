@@ -13,7 +13,8 @@ import {
     FileText,
     Scale,
     MessageSquare,
-    Save
+    Save,
+    Database
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { StorageService } from '../../services/storageService';
@@ -389,14 +390,14 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
             {/* Two Column Masonry Layout */}
             <div className="columns-1 lg:columns-2 gap-6 space-y-6">
                 {/* Security & Execution Section */}
-                <section className="rounded-lg border border-gray-800/60 overflow-hidden break-inside-avoid">
+                <section className="glass-panel rounded break-inside-avoid">
                     <div className="px-6 py-4 border-b border-gray-800/60 flex items-center gap-3">
-                        <div className="p-2 bg-blue-500/10 rounded-lg">
+                        <div className="p-2 bg-blue-500/10 rounded">
                             <Shield className="h-4 w-4 text-blue-400" />
                         </div>
                         <div className="flex-1">
                             <h2 className="text-sm font-bold text-white tracking-wide">Security & Execution</h2>
-                            <p className="text-[11px] text-gray-500 mt-0.5">Choose how your bot runs and stores keys</p>
+                            <p className="text-[11px] text-gray-500 mt-0.5 font-light">Choose how your bot runs and stores keys</p>
                         </div>
                     </div>
                     <div className="p-6">
@@ -406,14 +407,14 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                     </div>
                 </section>
 
-                {/* Data Export/Import Section */}
-                <section className="rounded-lg border border-gray-800/60 overflow-hidden break-inside-avoid">
+                {/* Data Backup Card */}
+                <section className="glass-panel rounded break-inside-avoid">
                     <div className="px-6 py-4 border-b border-gray-800/60 flex items-center gap-3">
-                        <div className="p-2 bg-gray-800/30 rounded-lg">
-                            <Save className="h-4 w-4 text-blue-400" />
+                        <div className="p-2 bg-gray-800/30 rounded">
+                            <Database className="h-4 w-4 text-white" />
                         </div>
                         <div className="flex-1">
-                            <h2 className="text-sm font-medium text-gray-200 tracking-wide">Data Backup</h2>
+                            <h2 className="text-sm font-bold text-white tracking-wide">Data Backup</h2>
                             <p className="text-[11px] text-gray-500 mt-0.5">Export your settings to move to another device</p>
                         </div>
                     </div>
@@ -469,14 +470,14 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                     </div>
                 </section>
 
-                {/* Account Deletion Section */}
-                <section className="rounded-lg border border-red-900/20 overflow-hidden break-inside-avoid">
-                    <div className="px-6 py-4 border-b border-red-900/20 flex items-center gap-3 bg-red-950/10">
-                        <div className="p-2 bg-red-900/20 rounded-lg">
-                            <Trash2 className="h-4 w-4 text-red-400" />
+                {/* Danger Zone Card */}
+                <section className="glass-panel rounded break-inside-avoid">
+                    <div className="px-6 py-4 border-b border-red-900/40 flex items-center gap-3">
+                        <div className="p-2 bg-red-500/10 rounded">
+                            <AlertTriangle className="h-4 w-4 text-red-500" />
                         </div>
                         <div className="flex-1">
-                            <h2 className="text-sm font-medium text-red-200 tracking-wide">Danger Zone</h2>
+                            <h2 className="text-sm font-bold text-red-500 tracking-wide">Danger Zone</h2>
                         </div>
                     </div>
 

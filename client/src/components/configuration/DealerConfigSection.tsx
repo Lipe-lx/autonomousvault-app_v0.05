@@ -88,7 +88,7 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                 <div className="flex flex-col gap-4">
 
                     {/* Engine Status Card */}
-                    <div className="glass-panel p-4">
+                    <div className="glass-panel p-4 rounded">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className={`h-10 w-10 rounded flex items-center justify-center ${status.isOn ? 'bg-[#E7FE55]/15 text-[#E7FE55]' : 'bg-[#1a1b21] text-[#747580]'}`}>
@@ -125,8 +125,8 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                     </div>
 
                     {/* Capital & Risk Card - Compact */}
-                    <div className="glass-panel p-3">
-                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-semibold uppercase tracking-[0.1em] mb-2">
+                    <div className="glass-panel p-3 rounded">
+                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-bold uppercase tracking-wide mb-2">
                             <DollarSign className="h-3 w-3" /> Capital & Risk
                         </div>
 
@@ -274,8 +274,8 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                     </div>
 
                     {/* Core Analysis Settings Card */}
-                    <div className="glass-panel p-4">
-                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-semibold uppercase tracking-[0.1em] mb-3">
+                    <div className="glass-panel p-4 rounded">
+                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-bold uppercase tracking-wide mb-3">
                             <BarChart2 className="h-3.5 w-3.5" /> Analysis Settings
                         </div>
                         <div className="grid grid-cols-3 gap-3">
@@ -326,8 +326,8 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                     </div>
 
                     {/* Macro Timeframe Card */}
-                    <div className="glass-panel p-4">
-                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-semibold uppercase tracking-[0.1em] mb-3">
+                    <div className="glass-panel p-4 rounded">
+                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-bold uppercase tracking-wide mb-3">
                             <TrendingUp className="h-3.5 w-3.5" /> Macro Timeframe
                         </div>
                         <div className="flex items-center justify-between">
@@ -361,7 +361,7 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                                 <div className="text-[10px] text-[#747580] mb-2 uppercase tracking-wider">Active Indicators:</div>
                                 <div className="grid grid-cols-4 gap-1.5">
                                     {Object.entries(localSettings.indicatorSettings)
-                                        .filter(([_, config]) => config.enabled)
+                                        .filter(([_, config]: [string, any]) => config.enabled)
                                         .map(([name, _]) => {
                                             const isSelected = localSettings.macroEnabledIndicators?.includes(name);
                                             return (
@@ -398,9 +398,9 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                     </div>
 
                     {/* Trading Pairs Card */}
-                    <div className="glass-panel p-4">
+                    <div className="glass-panel p-4 rounded">
                         <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-semibold uppercase tracking-[0.1em]">
+                            <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-bold uppercase tracking-wide">
                                 <Target className="h-3.5 w-3.5" /> Trading Pairs
                             </div>
                             <span className="text-[10px] bg-[#E7FE55]/15 text-[#E7FE55] px-2 py-0.5 rounded border border-[#E7FE55]/30 font-mono">
@@ -451,9 +451,9 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                 </div>
 
                 {/* RIGHT COLUMN: Indicators */}
-                <div className="glass-panel flex flex-col overflow-hidden">
+                <div className="glass-panel rounded flex flex-col overflow-hidden">
                     <div className="p-3 border-b border-[#232328] flex items-center justify-between shrink-0">
-                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-semibold uppercase tracking-[0.1em]">
+                        <div className="flex items-center gap-2 text-[10px] text-[#E7FE55] font-bold uppercase tracking-wide">
                             <Activity className="h-3.5 w-3.5" /> Indicators
                         </div>
                         <div className="flex items-center gap-2">
