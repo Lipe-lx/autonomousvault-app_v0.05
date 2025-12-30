@@ -19,6 +19,10 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     signInWithGoogle: () => Promise<void>;
+    signInWithGitHub: () => Promise<void>;
+    signInWithDiscord: () => Promise<void>;
+    signInWithEthereum: () => Promise<void>;
+    signInWithSolana: () => Promise<void>;
     signInWithEmail: (email: string, password: string) => Promise<void>;
     signUp: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
@@ -125,6 +129,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
+    const signInWithGitHub = async () => {
+        try {
+            await supabaseAuth.signInWithGitHub();
+        } catch (error) {
+            console.error('GitHub sign-in error:', error);
+            throw error;
+        }
+    };
+
+    const signInWithDiscord = async () => {
+        try {
+            await supabaseAuth.signInWithDiscord();
+        } catch (error) {
+            console.error('Discord sign-in error:', error);
+            throw error;
+        }
+    };
+
+    const signInWithEthereum = async () => {
+        try {
+            await supabaseAuth.signInWithEthereum();
+        } catch (error) {
+            console.error('Ethereum sign-in error:', error);
+            throw error;
+        }
+    };
+
+    const signInWithSolana = async () => {
+        try {
+            await supabaseAuth.signInWithSolana();
+        } catch (error) {
+            console.error('Solana sign-in error:', error);
+            throw error;
+        }
+    };
+
     const signInWithEmail = async (email: string, password: string) => {
         try {
             await supabaseAuth.signInWithEmail(email, password);
@@ -156,6 +196,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         user,
         loading,
         signInWithGoogle,
+        signInWithGitHub,
+        signInWithDiscord,
+        signInWithEthereum,
+        signInWithSolana,
         signInWithEmail,
         signUp,
         logout,

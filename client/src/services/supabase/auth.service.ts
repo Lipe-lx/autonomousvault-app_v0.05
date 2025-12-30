@@ -72,11 +72,32 @@ export class SupabaseAuthService {
      * Sign in with Google OAuth
      */
     async signInWithGoogle(): Promise<SupabaseUser> {
+        return this.signInWithProvider('google');
+    }
+
+    /**
+     * Sign in with GitHub OAuth
+     */
+    async signInWithGitHub(): Promise<SupabaseUser> {
+        return this.signInWithProvider('github');
+    }
+
+    /**
+     * Sign in with Discord OAuth
+     */
+    async signInWithDiscord(): Promise<SupabaseUser> {
+        return this.signInWithProvider('discord');
+    }
+
+    /**
+     * Generic OAuth sign in
+     */
+    async signInWithProvider(provider: 'google' | 'github' | 'discord'): Promise<SupabaseUser> {
         const supabase = getSupabaseClient();
         if (!supabase) throw new Error('Supabase not initialized');
 
         const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
+            provider,
             options: {
                 redirectTo: window.location.origin
             }
@@ -85,6 +106,61 @@ export class SupabaseAuthService {
         if (error) throw error;
 
         // User will be set via onAuthStateChange after redirect
+        return this.currentUser!;
+    }
+
+    /**
+     * Sign in with Ethereum wallet (EIP-4361 / SIWE)
+     */
+    async signInWithEthereum(): Promise<SupabaseUser> {
+        const supabase = getSupabaseClient();
+        if (!supabase) throw new Error('Supabase not initialized');
+
+        // Check if ethereum wallet is available
+        if (typeof window !== 'undefined' && !(window as any).ethereum) {
+            throw new Error('No Ethereum wallet detected. Please install MetaMask or another Web3 wallet.');
+        }
+
+        const { data, error } = await supabase.auth.signInWithWeb3({
+            chain: 'ethereum',
+            statement: 'I accept the AutonomousVault Terms of Service',
+        });
+
+        if (error) throw error;
+
+        this.currentUser = mapSupabaseUser(data.user);
+        this.notifyListeners();
+        return this.currentUser!;
+    }
+
+    /**
+     * Sign in with Solana wallet (SIWS)
+     */
+    async signInWithSolana(): Promise<SupabaseUser> {
+        const supabase = getSupabaseClient();
+        if (!supabase) throw new Error('Supabase not initialized');
+
+        // Check if solana wallet is available
+        if (typeof window !== 'undefined' && !(window as any).solana) {
+            throw new Error('No Solana wallet detected. Please install Phantom or another Solana wallet.');
+        }
+
+        // Connect to Solana wallet first
+        try {
+            await (window as any).solana.connect();
+        } catch (e) {
+            throw new Error('Failed to connect to Solana wallet');
+        }
+
+        const { data, error } = await supabase.auth.signInWithWeb3({
+            chain: 'solana',
+            statement: 'I accept the AutonomousVault Terms of Service',
+        });
+
+        if (error) throw error;
+
+        this.currentUser = mapSupabaseUser(data.user);
+        this.notifyListeners();
         return this.currentUser!;
     }
 
