@@ -183,17 +183,6 @@ export const SecurityTierSelector: React.FC<SecurityTierSelectorProps> = ({ onTi
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-blue-500/10 rounded-lg">
-                    <Shield className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                     <h3 className="text-lg font-bold text-white tracking-tight">Security & Execution</h3>
-                     <p className="text-xs text-gray-500">Choose how your bot runs and stores keys</p>
-                </div>
-            </div>
-
             {/* Current Status Banner */}
             {tierState.currentTier === 'session' && sessionStatus.active && (
                 <div className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg animate-in fade-in slide-in-from-top-1">

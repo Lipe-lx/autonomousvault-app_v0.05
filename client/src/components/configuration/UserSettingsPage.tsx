@@ -388,13 +388,16 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
 
             {/* Two Column Masonry Layout */}
             <div className="columns-1 lg:columns-2 gap-6 space-y-6">
-                {/* Security Tier Section */}
+                {/* Security & Execution Section */}
                 <section className="rounded-lg border border-gray-800/60 overflow-hidden break-inside-avoid">
                     <div className="px-6 py-4 border-b border-gray-800/60 flex items-center gap-3">
-                        <div className="p-2 bg-gray-800/30 rounded-lg">
-                            <Shield className="h-4 w-4 text-emerald-400" />
+                        <div className="p-2 bg-blue-500/10 rounded-lg">
+                            <Shield className="h-4 w-4 text-blue-400" />
                         </div>
-                        <h2 className="text-sm font-medium text-gray-200 tracking-wide">Security Tier</h2>
+                        <div className="flex-1">
+                            <h2 className="text-sm font-bold text-white tracking-wide">Security & Execution</h2>
+                            <p className="text-[11px] text-gray-500 mt-0.5">Choose how your bot runs and stores keys</p>
+                        </div>
                     </div>
                     <div className="p-6">
                         <SecurityTierSelector
