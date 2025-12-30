@@ -1104,6 +1104,76 @@ export class AIService {
   }
 
   /**
+   * Get dealer analysis via Strategy Oracle (remote proprietary prompts)
+   * Uses the vendor's backend to protect IP while using the user's API key
+   * 
+   * @param marketContext Market data for all coins
+   * @param portfolioContext Portfolio limits and current positions
+   * @param oracleUrl URL of the Strategy Oracle endpoint
+   * @returns Decisions from the Oracle
+   */
+  async getDealerAnalysisViaOracle(
+    marketContext: any,
+    portfolioContext: {
+      maxOpenPositions: number;
+      maxLeverage: number;
+      currentPositions: any[];
+    },
+    oracleUrl: string
+  ): Promise<{ decisions: any[], timestamp: string }> {
+    // Get AI config for the dealer component
+    const config = aiConfigStore.getComponentConfig('hyperliquidDealer');
+    const apiKey = aiConfigStore.getComponentApiKey('hyperliquidDealer');
+
+    if (!apiKey) {
+      throw new Error('No AI API key configured for Hyperliquid Dealer');
+    }
+
+    const payload = {
+      marketContext,
+      aiConfig: {
+        provider: config.providerType,
+        apiKey: apiKey,
+        modelId: config.modelId
+      },
+      portfolioContext
+    };
+
+    try {
+      const response = await fetch(oracleUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Strategy Oracle error: ${errorText}`);
+      }
+
+      const result = await response.json();
+
+      // Track token usage
+      tokenUsageStore.addRecord({
+        source: 'DEALER',
+        operation: 'ORACLE_ANALYSIS',
+        inputTokens: Math.round(JSON.stringify(marketContext).length / 4),
+        outputTokens: Math.round(JSON.stringify(result).length / 4),
+        model: config.modelId,
+        metadata: { via: 'strategy-oracle' }
+      });
+
+      return {
+        decisions: result.decisions || [],
+        timestamp: result.timestamp || new Date().toISOString()
+      };
+    } catch (error: any) {
+      console.error('[AIService] Strategy Oracle call failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get Polymarket analysis using component-specific provider
    */
   async getPolymarketAnalysis(prompt: string): Promise<string | null> {

@@ -6,7 +6,7 @@ export interface TokenUsageRecord {
     id: string;
     timestamp: number;
     source: 'MANAGER' | 'DEALER' | 'POLYMARKET_DEALER';
-    operation: 'QUERY' | 'ANALYSIS' | 'BATCH_ANALYSIS' | 'CYCLE_SUMMARY';
+    operation: 'QUERY' | 'ANALYSIS' | 'BATCH_ANALYSIS' | 'CYCLE_SUMMARY' | 'ORACLE_ANALYSIS';
     inputTokens: number;
     outputTokens: number;
     model: string;
@@ -14,6 +14,7 @@ export interface TokenUsageRecord {
         coinsAnalyzed?: number;
         toolsUsed?: string[];
         conversationId?: string;
+        via?: string;
     };
 }
 
