@@ -2,7 +2,7 @@
 // Allows users to configure and migrate between security tiers
 
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
-import { Shield, Clock, Zap, AlertTriangle, Check, Loader2, Info } from 'lucide-react';
+import { Shield, Clock, Zap, AlertTriangle, Check, Loader2, Info, Database } from 'lucide-react';
 import {
     securityTierService,
     SecurityTier,
@@ -10,6 +10,8 @@ import {
     SecurityTierInfo
 } from '../../services/securityTierService';
 import { StorageService } from '../../services/storageService';
+import { userDataSupabase } from '../../services/supabase/userDataSupabase';
+import { SupabaseSetupWizard } from './SupabaseSetupWizard';
 
 interface SecurityTierSelectorProps {
     onTierChange?: (tier: SecurityTier) => void;
@@ -28,6 +30,8 @@ export const SecurityTierSelector: React.FC<SecurityTierSelectorProps> = ({ onTi
     const [error, setError] = useState<string | null>(null);
     const [showConfirmation, setShowConfirmation] = useState(false);
     const [acknowledgedRisk, setAcknowledgedRisk] = useState(false);
+    const [showSupabaseSetup, setShowSupabaseSetup] = useState(false);
+    const [isSupabaseConnected, setIsSupabaseConnected] = useState(userDataSupabase.isConnected());
 
     const sessionStatus = securityTierService.getSessionStatus();
 
@@ -36,11 +40,34 @@ export const SecurityTierSelector: React.FC<SecurityTierSelectorProps> = ({ onTi
         setSelectedTier(tierState.currentTier);
     }, [tierState.currentTier]);
 
+    // Subscribe to user's Supabase connection state
+    useEffect(() => {
+        const unsubscribe = userDataSupabase.subscribe((connected) => {
+            setIsSupabaseConnected(connected);
+        });
+        return () => unsubscribe();
+    }, []);
+
     const handleTierSelect = (tier: SecurityTier) => {
         setSelectedTier(tier);
         setError(null);
-        setShowConfirmation(tier !== tierState.currentTier);
         setAcknowledgedRisk(false);
+
+        // For Tier B or C, check if user's Supabase is connected
+        if ((tier === 'session' || tier === 'persistent') && !isSupabaseConnected) {
+            setShowSupabaseSetup(true);
+            setShowConfirmation(false);
+        } else {
+            setShowSupabaseSetup(false);
+            setShowConfirmation(tier !== tierState.currentTier);
+        }
+    };
+
+    // Called when Supabase setup wizard completes
+    const handleSupabaseConnected = () => {
+        setShowSupabaseSetup(false);
+        setIsSupabaseConnected(true);
+        setShowConfirmation(selectedTier !== tierState.currentTier);
     };
 
     const handleMigrate = async () => {
@@ -211,6 +238,38 @@ export const SecurityTierSelector: React.FC<SecurityTierSelectorProps> = ({ onTi
                     );
                 })}
             </div>
+
+            {/* User's Supabase Connection Status */}
+            {(selectedTier === 'session' || selectedTier === 'persistent') && (
+                <div className={`flex items-center gap-2 p-3 rounded-lg ${isSupabaseConnected ? 'bg-green-500/10 border border-green-500/30' : 'bg-zinc-800/50 border border-zinc-700'}`}>
+                    <Database className={`w-4 h-4 ${isSupabaseConnected ? 'text-green-400' : 'text-zinc-400'}`} />
+                    <span className={`text-sm ${isSupabaseConnected ? 'text-green-200' : 'text-zinc-400'}`}>
+                        {isSupabaseConnected 
+                            ? `Your Supabase: ${userDataSupabase.getConfig()?.projectId || 'Connected'}`
+                            : 'Your Supabase: Not connected'
+                        }
+                    </span>
+                    {isSupabaseConnected && (
+                        <button
+                            onClick={() => setShowSupabaseSetup(true)}
+                            className="ml-auto text-xs text-zinc-400 hover:text-white transition-colors"
+                        >
+                            Change
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Supabase Setup Wizard */}
+            {showSupabaseSetup && (
+                <SupabaseSetupWizard
+                    onConnect={handleSupabaseConnected}
+                    onCancel={() => {
+                        setShowSupabaseSetup(false);
+                        setSelectedTier(tierState.currentTier);
+                    }}
+                />
+            )}
 
             {/* Migration Form */}
             {showConfirmation && selectedTier !== tierState.currentTier && (

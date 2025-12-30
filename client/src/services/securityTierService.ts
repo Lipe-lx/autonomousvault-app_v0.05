@@ -4,9 +4,11 @@
 // Tier A: Local Keys - Maximum security, browser must be open
 // Tier B: Session Keys - 24h execution sessions
 // Tier C: Persistent Keys - Full 24/7 automation
+//
+// NOTE: Uses `userDataSupabase` for user's personal Supabase (not Auth Supabase)
 
 import { StorageService } from './storageService';
-import { getSupabaseClient } from './supabase/client';
+import { userDataSupabase } from './supabase/userDataSupabase';
 
 // --- Types ---
 
@@ -192,14 +194,14 @@ class SecurityTierService {
         durationHours: number = DEFAULT_SESSION_DURATION_HOURS
     ): Promise<{ success: boolean; error?: string }> {
         try {
-            const supabase = getSupabaseClient();
+            const supabase = userDataSupabase.getClient();
             if (!supabase) {
-                return { success: false, error: 'Supabase not connected' };
+                return { success: false, error: 'Your Supabase not connected. Please connect in Security Tier settings.' };
             }
 
-            // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
+            // Get current user from auth context (StorageService has userId set by AuthContext)
+            const userId = StorageService.getUserId();
+            if (!userId) {
                 return { success: false, error: 'Not authenticated' };
             }
 
@@ -207,7 +209,7 @@ class SecurityTierService {
             const { error: keyError } = await supabase
                 .from('encrypted_keys')
                 .upsert({
-                    user_id: user.id,
+                    user_id: userId,
                     key_name: 'hyperliquid',
                     encrypted_blob: encryptedBlob,
                     encryption_salt: encryptionSalt,
@@ -226,13 +228,13 @@ class SecurityTierService {
 
             // Generate session token (encrypted with password)
             const sessionId = crypto.randomUUID();
-            const sessionToken = await this.createSessionToken(user.id, password, expiresAt);
+            const sessionToken = await this.createSessionToken(userId, password, expiresAt);
 
             const { error: sessionError } = await supabase
                 .from('execution_sessions')
                 .insert({
                     id: sessionId,
-                    user_id: user.id,
+                    user_id: userId,
                     encrypted_session_token: sessionToken,
                     expires_at: expiresAt.toISOString(),
                     revoked: false
@@ -250,7 +252,7 @@ class SecurityTierService {
                 passwordStoredInSupabase: false,
                 session: {
                     id: sessionId,
-                    userId: user.id,
+                    userId: userId,
                     createdAt: now,
                     expiresAt: expiresAt,
                     active: true
@@ -277,14 +279,14 @@ class SecurityTierService {
         password: string
     ): Promise<{ success: boolean; error?: string }> {
         try {
-            const supabase = getSupabaseClient();
+            const supabase = userDataSupabase.getClient();
             if (!supabase) {
-                return { success: false, error: 'Supabase not connected' };
+                return { success: false, error: 'Your Supabase not connected. Please connect in Security Tier settings.' };
             }
 
-            // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
+            // Get current user from auth context
+            const userId = StorageService.getUserId();
+            if (!userId) {
                 return { success: false, error: 'Not authenticated' };
             }
 
@@ -295,7 +297,7 @@ class SecurityTierService {
             const { error: keyError } = await supabase
                 .from('encrypted_keys')
                 .upsert({
-                    user_id: user.id,
+                    user_id: userId,
                     key_name: 'hyperliquid',
                     encrypted_blob: encryptedBlob,
                     encryption_salt: encryptionSalt,
@@ -334,7 +336,7 @@ class SecurityTierService {
      */
     async migrateToLocal(): Promise<{ success: boolean; error?: string }> {
         try {
-            const supabase = getSupabaseClient();
+            const supabase = userDataSupabase.getClient();
             if (!supabase) {
                 // No Supabase? Already local
                 this.state = {
@@ -348,9 +350,9 @@ class SecurityTierService {
                 return { success: true };
             }
 
-            // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
+            // Get current user from auth context
+            const userId = StorageService.getUserId();
+            if (!userId) {
                 return { success: false, error: 'Not authenticated' };
             }
 
@@ -358,14 +360,14 @@ class SecurityTierService {
             await supabase
                 .from('encrypted_keys')
                 .delete()
-                .eq('user_id', user.id)
+                .eq('user_id', userId)
                 .eq('key_name', 'hyperliquid');
 
             // Revoke all sessions
             await supabase
                 .from('execution_sessions')
                 .update({ revoked: true })
-                .eq('user_id', user.id);
+                .eq('user_id', userId);
 
             // Update local state
             this.state = {
@@ -394,7 +396,7 @@ class SecurityTierService {
         if (!this.state.session) return;
 
         try {
-            const supabase = getSupabaseClient();
+            const supabase = userDataSupabase.getClient();
             if (supabase) {
                 await supabase
                     .from('execution_sessions')
@@ -427,20 +429,20 @@ class SecurityTierService {
         await this.endSession();
 
         // Get encrypted key from Supabase to re-create session
-        const supabase = getSupabaseClient();
+        const supabase = userDataSupabase.getClient();
         if (!supabase) {
-            return { success: false, error: 'Supabase not connected' };
+            return { success: false, error: 'Your Supabase not connected' };
         }
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        const userId = StorageService.getUserId();
+        if (!userId) {
             return { success: false, error: 'Not authenticated' };
         }
 
         const { data: keyData } = await supabase
             .from('encrypted_keys')
             .select('encrypted_blob, encryption_salt')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .eq('key_name', 'hyperliquid')
             .single();
 
@@ -460,17 +462,17 @@ class SecurityTierService {
 
     private async syncSupabaseState(): Promise<void> {
         try {
-            const supabase = getSupabaseClient();
+            const supabase = userDataSupabase.getClient();
             if (!supabase) return;
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            const userId = StorageService.getUserId();
+            if (!userId) return;
 
             // Check if key exists in Supabase
             const { data: keyData } = await supabase
                 .from('encrypted_keys')
                 .select('encrypted_password')
-                .eq('user_id', user.id)
+                .eq('user_id', userId)
                 .eq('key_name', 'hyperliquid')
                 .single();
 
