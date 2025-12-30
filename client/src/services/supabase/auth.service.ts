@@ -320,25 +320,12 @@ export class SupabaseAuthService {
 
         // Set up auth state listener
         supabase.auth.onAuthStateChange((event, session) => {
-            console.log(`[SupabaseAuth] Auth state change: ${event}`, session?.user?.email);
-            
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                console.log('[SupabaseAuth] User signed in/refreshed');
-            } else if (event === 'SIGNED_OUT') {
-                console.log('[SupabaseAuth] User signed out');
-            }
-
             this.currentUser = session ? mapSupabaseUser(session.user) : null;
             this.notifyListeners();
         });
 
         // Get initial session
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-            console.error('[SupabaseAuth] Error getting initial session:', error);
-        }
-        
-        console.log('[SupabaseAuth] Initial session check:', session ? 'Session found' : 'No session found');
+        const { data: { session } } = await supabase.auth.getSession();
         this.currentUser = session ? mapSupabaseUser(session.user) : null;
         this.notifyListeners();
     }

@@ -71,7 +71,6 @@ export async function initializeSupabase(): Promise<boolean> {
             },
         });
 
-        console.log('[Supabase] Client initialized successfully');
         return true;
     } catch (error) {
         console.error('[Supabase] Initialization failed:', error);
