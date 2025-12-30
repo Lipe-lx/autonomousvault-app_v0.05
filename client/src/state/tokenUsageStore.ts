@@ -53,10 +53,10 @@ export interface TokenUsageStats {
 }
 
 const DEFAULT_PRICING: TokenPricing = {
-    inputPricePerMillion: 0.15,  // Gemini 2.5 Flash
-    outputPricePerMillion: 0.60,
+    inputPricePerMillion: 0.5,  // Gemini 3 Flash
+    outputPricePerMillion: 2.5,
     customModelPricing: {
-        'gemini-3-flash-preview': { input: 0.15, output: 0.60 },
+        'gemini-3-flash-preview': { input: 0.5, output: 2.5 },
         'gemini-2.5-pro': { input: 1.25, output: 10.00 },
         'gemini-2.5-flash': { input: 0.15, output: 0.60 },
         'gemini-2.5-flash-lite': { input: 0.075, output: 0.30 },
