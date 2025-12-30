@@ -2,16 +2,17 @@
 // Allows users to configure and migrate between security tiers
 
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
-import { Shield, Clock, Zap, AlertTriangle, Check, Loader2, Info, Database } from 'lucide-react';
+import { Shield, Clock, Zap, Database } from 'lucide-react';
 import {
     securityTierService,
     SecurityTier,
     SECURITY_TIERS,
-    SecurityTierInfo
 } from '../../services/securityTierService';
 import { StorageService } from '../../services/storageService';
 import { userDataSupabase } from '../../services/supabase/userDataSupabase';
-import { SupabaseSetupWizard } from './SupabaseSetupWizard';
+import { SupabaseConnectModal } from './modals/SupabaseConnectModal';
+import { SessionKeyModal } from './modals/SessionKeyModal';
+import { PersistentKeyModal } from './modals/PersistentKeyModal';
 
 interface SecurityTierSelectorProps {
     onTierChange?: (tier: SecurityTier) => void;
@@ -24,14 +25,14 @@ export const SecurityTierSelector: React.FC<SecurityTierSelectorProps> = ({ onTi
     );
 
     const [selectedTier, setSelectedTier] = useState<SecurityTier>(tierState.currentTier);
-    const [password, setPassword] = useState('');
-    const [sessionDuration, setSessionDuration] = useState(24);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [showConfirmation, setShowConfirmation] = useState(false);
-    const [acknowledgedRisk, setAcknowledgedRisk] = useState(false);
     const [showSupabaseSetup, setShowSupabaseSetup] = useState(false);
     const [isSupabaseConnected, setIsSupabaseConnected] = useState(userDataSupabase.isConnected());
+
+    // Modal States
+    const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
+    const [isPersistentModalOpen, setIsPersistentModalOpen] = useState(false);
 
     const sessionStatus = securityTierService.getSessionStatus();
 
@@ -48,18 +49,30 @@ export const SecurityTierSelector: React.FC<SecurityTierSelectorProps> = ({ onTi
         return () => unsubscribe();
     }, []);
 
-    const handleTierSelect = (tier: SecurityTier) => {
-        setSelectedTier(tier);
-        setError(null);
-        setAcknowledgedRisk(false);
+    const handleTierSelect = async (tier: SecurityTier) => {
+        // If selecting the already active tier, do nothing
+        if (tier === tierState.currentTier) {
+            setSelectedTier(tier);
+            return;
+        }
 
         // For Tier B or C, check if user's Supabase is connected
         if ((tier === 'session' || tier === 'persistent') && !isSupabaseConnected) {
+            setSelectedTier(tier); // Visually select it
             setShowSupabaseSetup(true);
-            setShowConfirmation(false);
-        } else {
-            setShowSupabaseSetup(false);
-            setShowConfirmation(tier !== tierState.currentTier);
+            return;
+        }
+
+        setSelectedTier(tier);
+        setError(null);
+
+        // Open appropriate modal or execute immediate migration
+        if (tier === 'local') {
+            await handleMigrateToLocal();
+        } else if (tier === 'session') {
+            setIsSessionModalOpen(true);
+        } else if (tier === 'persistent') {
+            setIsPersistentModalOpen(true);
         }
     };
 
@@ -67,66 +80,86 @@ export const SecurityTierSelector: React.FC<SecurityTierSelectorProps> = ({ onTi
     const handleSupabaseConnected = () => {
         setShowSupabaseSetup(false);
         setIsSupabaseConnected(true);
-        setShowConfirmation(selectedTier !== tierState.currentTier);
+        
+        // Resume the flow based on selected tier
+        if (selectedTier === 'session') {
+            setIsSessionModalOpen(true);
+        } else if (selectedTier === 'persistent') {
+            setIsPersistentModalOpen(true);
+        }
     };
 
-    const handleMigrate = async () => {
-        if (selectedTier === tierState.currentTier) return;
-
-        // For Tier C, require explicit risk acknowledgment
-        if (selectedTier === 'persistent' && !acknowledgedRisk) {
-            setError('You must acknowledge the security implications');
-            return;
-        }
-
+    const handleMigrateToLocal = async () => {
         setIsLoading(true);
-        setError(null);
-
         try {
-            let result: { success: boolean; error?: string };
+            const result = await securityTierService.migrateToLocal();
+            if (!result.success) throw new Error(result.error || 'Migration failed');
+            onTierChange?.('local');
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unknown error');
+            // Revert selection
+            setSelectedTier(tierState.currentTier);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-            if (selectedTier === 'local') {
-                result = await securityTierService.migrateToLocal();
-            } else {
-                // Need encrypted key for Tier B and C
-                const encryptedBlob = await StorageService.getItem(
-                    StorageService.getUserKey('agent_hl_vault_enc')
-                );
-                const encryptionSalt = await StorageService.getItem(
-                    StorageService.getUserKey('agent_hl_vault_salt')
-                );
+    const handleMigrateToSession = async (password: string, duration: number) => {
+        setIsLoading(true);
+        try {
+            const encryptedBlob = await StorageService.getItem(
+                StorageService.getUserKey('agent_hl_vault_enc')
+            );
+            const encryptionSalt = await StorageService.getItem(
+                StorageService.getUserKey('agent_hl_vault_salt')
+            );
 
-                if (!encryptedBlob || !encryptionSalt) {
-                    throw new Error('No encrypted key found. Please set up your wallet first.');
-                }
-
-                if (!password) {
-                    throw new Error('Password is required');
-                }
-
-                if (selectedTier === 'session') {
-                    result = await securityTierService.migrateToSession(
-                        encryptedBlob,
-                        encryptionSalt,
-                        password,
-                        sessionDuration
-                    );
-                } else {
-                    result = await securityTierService.migrateToPersistent(
-                        encryptedBlob,
-                        encryptionSalt,
-                        password
-                    );
-                }
+            if (!encryptedBlob || !encryptionSalt) {
+                throw new Error('No encrypted key found. Please set up your wallet first.');
             }
 
-            if (!result.success) {
-                throw new Error(result.error || 'Migration failed');
+            const result = await securityTierService.migrateToSession(
+                encryptedBlob,
+                encryptionSalt,
+                password,
+                duration
+            );
+
+            if (!result.success) throw new Error(result.error || 'Migration failed');
+            
+            setIsSessionModalOpen(false);
+            onTierChange?.('session');
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unknown error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleMigrateToPersistent = async (password: string) => {
+        setIsLoading(true);
+        try {
+            const encryptedBlob = await StorageService.getItem(
+                StorageService.getUserKey('agent_hl_vault_enc')
+            );
+            const encryptionSalt = await StorageService.getItem(
+                StorageService.getUserKey('agent_hl_vault_salt')
+            );
+
+            if (!encryptedBlob || !encryptionSalt) {
+                throw new Error('No encrypted key found. Please set up your wallet first.');
             }
 
-            setPassword('');
-            setShowConfirmation(false);
-            onTierChange?.(selectedTier);
+            const result = await securityTierService.migrateToPersistent(
+                encryptedBlob,
+                encryptionSalt,
+                password
+            );
+
+            if (!result.success) throw new Error(result.error || 'Migration failed');
+
+            setIsPersistentModalOpen(false);
+            onTierChange?.('persistent');
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Unknown error');
         } finally {
@@ -143,31 +176,43 @@ export const SecurityTierSelector: React.FC<SecurityTierSelectorProps> = ({ onTi
     };
 
     const getTierColor = (tier: SecurityTier, isSelected: boolean, isCurrent: boolean) => {
-        if (isCurrent && isSelected) return 'border-green-500 bg-green-500/10';
-        if (isSelected) return 'border-blue-500 bg-blue-500/10';
-        return 'border-zinc-700 hover:border-zinc-500';
+        if (isCurrent) return 'border-emerald-500/50 bg-emerald-500/5';
+        if (isSelected) return 'border-blue-500 bg-blue-500/5';
+        return 'border-gray-800 hover:border-gray-700 bg-gray-900/40';
     };
 
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-3">
-                <Shield className="w-5 h-5 text-blue-400" />
-                <h3 className="text-lg font-semibold text-white">Security Tier</h3>
+            <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                    <Shield className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                     <h3 className="text-lg font-bold text-white tracking-tight">Security & Execution</h3>
+                     <p className="text-xs text-gray-500">Choose how your bot runs and stores keys</p>
+                </div>
             </div>
 
-            {/* Current Status */}
+            {/* Current Status Banner */}
             {tierState.currentTier === 'session' && sessionStatus.active && (
-                <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                    <Clock className="w-4 h-4 text-amber-400" />
-                    <span className="text-sm text-amber-200">
-                        Session active: {sessionStatus.remainingHours}h remaining
-                    </span>
+                <div className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg animate-in fade-in slide-in-from-top-1">
+                    <div className="p-1.5 bg-amber-500/20 rounded-full animate-pulse">
+                         <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    </div>
+                    <div className="flex-1">
+                        <span className="text-sm font-medium text-amber-200">
+                            Session Active
+                        </span>
+                        <span className="text-xs text-amber-200/70 block">
+                             {sessionStatus.remainingHours}h remaining
+                        </span>
+                    </div>
                 </div>
             )}
 
-            {/* Tier Cards */}
-            <div className="grid gap-4">
+            {/* Tier Cards Grid */}
+            <div className="grid gap-3">
                 {(Object.keys(SECURITY_TIERS) as SecurityTier[]).map((tier) => {
                     const info = SECURITY_TIERS[tier];
                     const isCurrent = tierState.currentTier === tier;
@@ -178,58 +223,60 @@ export const SecurityTierSelector: React.FC<SecurityTierSelectorProps> = ({ onTi
                             key={tier}
                             onClick={() => handleTierSelect(tier)}
                             className={`
-                                relative p-4 rounded-xl border-2 transition-all text-left
+                                group relative p-4 rounded-xl border transition-all duration-300 text-left w-full
                                 ${getTierColor(tier, isSelected, isCurrent)}
                             `}
                         >
-                            {/* Current badge */}
+                            {/* Current Badge */}
                             {isCurrent && (
-                                <span className="absolute top-2 right-2 px-2 py-0.5 text-xs font-medium bg-green-500/20 text-green-400 rounded-full">
-                                    Active
-                                </span>
+                                <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-sm">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Active</span>
+                                </div>
                             )}
 
                             <div className="flex items-start gap-4">
                                 {/* Icon */}
                                 <div className={`
-                                    p-2 rounded-lg
-                                    ${tier === 'local' ? 'bg-green-500/20 text-green-400' :
-                                        tier === 'session' ? 'bg-amber-500/20 text-amber-400' :
-                                            'bg-red-500/20 text-red-400'}
+                                    p-3 rounded-xl transition-colors
+                                    ${tier === 'local' ? 'bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20' :
+                                        tier === 'session' ? 'bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20' :
+                                            'bg-red-500/10 text-red-400 group-hover:bg-red-500/20'}
                                 `}>
                                     {getTierIcon(tier)}
                                 </div>
 
                                 {/* Content */}
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="font-semibold text-white">
-                                            {info.icon} {info.label}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h4 className={`font-semibold text-sm ${isCurrent ? 'text-white' : 'text-gray-200 group-hover:text-white'}`}>
+                                            {info.label}
                                         </h4>
                                     </div>
-                                    <p className="text-sm text-zinc-400 mt-1">
+                                    
+                                    <p className="text-xs text-gray-500 leading-relaxed mb-3 pr-8">
                                         {info.description}
                                     </p>
 
-                                    {/* Features */}
-                                    <div className="flex flex-wrap gap-2 mt-3">
+                                    {/* Features Badges */}
+                                    <div className="flex flex-wrap gap-2">
                                         <span className={`
-                                            px-2 py-0.5 text-xs rounded-full
+                                            px-2 py-0.5 text-[10px] uppercase tracking-wider font-medium rounded-md border
                                             ${info.execution24x7
-                                                ? 'bg-green-500/20 text-green-300'
-                                                : 'bg-zinc-700 text-zinc-400'}
+                                                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400'
+                                                : 'bg-gray-800 border-gray-700 text-gray-400'}
                                         `}>
-                                            {info.execution24x7 ? '24/7 Execution' : 'Browser Required'}
+                                            {info.execution24x7 ? '24/7 Cloud Run' : 'Browser Only'}
                                         </span>
                                         <span className={`
-                                            px-2 py-0.5 text-xs rounded-full
-                                            ${info.securityLevel === 3 ? 'bg-green-500/20 text-green-300' :
-                                                info.securityLevel === 2 ? 'bg-amber-500/20 text-amber-300' :
-                                                    'bg-red-500/20 text-red-300'}
+                                            px-2 py-0.5 text-[10px] uppercase tracking-wider font-medium rounded-md border
+                                            ${info.securityLevel === 3 ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' :
+                                                info.securityLevel === 2 ? 'bg-amber-500/5 border-amber-500/20 text-amber-400' :
+                                                    'bg-red-500/5 border-red-500/20 text-red-400'}
                                         `}>
-                                            {info.securityLevel === 3 ? 'Max Security' :
+                                            {info.securityLevel === 3 ? 'High Security' :
                                                 info.securityLevel === 2 ? 'Medium Security' :
-                                                    'Lower Security'}
+                                                    'Low Security'}
                                         </span>
                                     </div>
                                 </div>
@@ -239,160 +286,77 @@ export const SecurityTierSelector: React.FC<SecurityTierSelectorProps> = ({ onTi
                 })}
             </div>
 
-            {/* User's Supabase Connection Status */}
-            {(selectedTier === 'session' || selectedTier === 'persistent') && (
-                <div className={`flex items-center gap-2 p-3 rounded-lg ${isSupabaseConnected ? 'bg-green-500/10 border border-green-500/30' : 'bg-zinc-800/50 border border-zinc-700'}`}>
-                    <Database className={`w-4 h-4 ${isSupabaseConnected ? 'text-green-400' : 'text-zinc-400'}`} />
-                    <span className={`text-sm ${isSupabaseConnected ? 'text-green-200' : 'text-zinc-400'}`}>
-                        {isSupabaseConnected 
-                            ? `Your Supabase: ${userDataSupabase.getConfig()?.projectId || 'Connected'}`
-                            : 'Your Supabase: Not connected'
-                        }
-                    </span>
-                    {isSupabaseConnected && (
-                        <button
-                            onClick={() => setShowSupabaseSetup(true)}
-                            className="ml-auto text-xs text-zinc-400 hover:text-white transition-colors"
-                        >
-                            Change
-                        </button>
-                    )}
-                </div>
-            )}
-
-            {/* Supabase Setup Wizard */}
-            {showSupabaseSetup && (
-                <SupabaseSetupWizard
-                    onConnect={handleSupabaseConnected}
-                    onCancel={() => {
-                        setShowSupabaseSetup(false);
-                        setSelectedTier(tierState.currentTier);
-                    }}
-                />
-            )}
-
-            {/* Migration Form */}
-            {showConfirmation && selectedTier !== tierState.currentTier && (
-                <div className="p-4 bg-zinc-800/50 border border-zinc-700 rounded-xl space-y-4">
-                    <h4 className="font-medium text-white flex items-center gap-2">
-                        <Info className="w-4 h-4 text-blue-400" />
-                        Migrate to {SECURITY_TIERS[selectedTier].label}
-                    </h4>
-
-                    {/* Password input for Tier B and C */}
-                    {selectedTier !== 'local' && (
-                        <div>
-                            <label className="block text-sm text-zinc-400 mb-1">
-                                Wallet Password
-                            </label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Enter your wallet password"
-                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:border-blue-500 focus:outline-none"
-                            />
+            {/* Supabase Status Footer */}
+            {(selectedTier === 'session' || selectedTier === 'persistent' || isSupabaseConnected) && (
+                <div className="pt-2">
+                    <div className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                        isSupabaseConnected 
+                        ? 'bg-emerald-900/10 border-emerald-500/20' 
+                        : 'bg-blue-900/10 border-blue-500/20'
+                    }`}>
+                        <div className={`p-1.5 rounded-md ${isSupabaseConnected ? 'bg-emerald-500/20' : 'bg-blue-500/20'}`}>
+                            <Database className={`w-3.5 h-3.5 ${isSupabaseConnected ? 'text-emerald-400' : 'text-blue-400'}`} />
                         </div>
-                    )}
-
-                    {/* Session duration for Tier B */}
-                    {selectedTier === 'session' && (
-                        <div>
-                            <label className="block text-sm text-zinc-400 mb-1">
-                                Session Duration (hours)
-                            </label>
-                            <input
-                                type="number"
-                                value={sessionDuration}
-                                onChange={(e) => setSessionDuration(Math.max(1, Math.min(72, parseInt(e.target.value) || 24)))}
-                                min={1}
-                                max={72}
-                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                            />
-                            <p className="text-xs text-zinc-500 mt-1">1-72 hours. Dealer will stop after expiration.</p>
-                        </div>
-                    )}
-
-                    {/* Risk acknowledgment for Tier C */}
-                    {selectedTier === 'persistent' && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                            <div className="flex items-start gap-2">
-                                <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="text-sm text-red-200 font-medium">Security Warning</p>
-                                    <p className="text-xs text-red-300/80 mt-1">
-                                        Your password will be stored encrypted on the server. This enables 24/7
-                                        execution but reduces security. If the server is compromised, your
-                                        encrypted wallet could potentially be decrypted.
-                                    </p>
-                                    <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={acknowledgedRisk}
-                                            onChange={(e) => setAcknowledgedRisk(e.target.checked)}
-                                            className="w-4 h-4 rounded border-zinc-600 text-red-500 focus:ring-red-500"
-                                        />
-                                        <span className="text-sm text-red-200">
-                                            I understand and accept the risks
-                                        </span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Downgrade notice */}
-                    {selectedTier === 'local' && tierState.keysInSupabase && (
-                        <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                            <p className="text-sm text-blue-200">
-                                Your encrypted key and any stored password will be deleted from the server.
-                                Keys will only exist in your browser.
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-medium ${isSupabaseConnected ? 'text-emerald-200' : 'text-blue-200'}`}>
+                                {isSupabaseConnected ? 'Supabase Connected' : 'Supabase Connection Required'}
+                            </p>
+                            <p className={`text-[10px] truncate ${isSupabaseConnected ? 'text-emerald-200/60' : 'text-blue-200/60'}`}>
+                                {isSupabaseConnected 
+                                    ? `Project: ${userDataSupabase.getConfig()?.projectId}` 
+                                    : 'Required for cloud execution modes'}
                             </p>
                         </div>
-                    )}
-
-                    {/* Error */}
-                    {error && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                            <p className="text-sm text-red-300">{error}</p>
-                        </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex gap-3">
-                        <button
-                            onClick={() => {
-                                setShowConfirmation(false);
-                                setSelectedTier(tierState.currentTier);
-                                setPassword('');
-                                setError(null);
-                            }}
-                            className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleMigrate}
-                            disabled={isLoading || (selectedTier === 'persistent' && !acknowledgedRisk)}
-                            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Migrating...
-                                </>
-                            ) : (
-                                <>
-                                    <Check className="w-4 h-4" />
-                                    Confirm Migration
-                                </>
-                            )}
-                        </button>
+                        {isSupabaseConnected && (
+                            <button
+                                onClick={() => setShowSupabaseSetup(true)}
+                                className="text-[10px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors px-2 py-1 bg-emerald-500/10 rounded hover:bg-emerald-500/20"
+                            >
+                                Edit
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
+
+            {/* Error Display */}
+            {error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg animate-in fade-in slide-in-from-top-1">
+                    <p className="text-xs text-red-300 font-medium">{error}</p>
+                </div>
+            )}
+
+            {/* Modals and Wizards */}
+            <SupabaseConnectModal
+                isOpen={showSupabaseSetup}
+                onClose={() => {
+                    setShowSupabaseSetup(false);
+                    // If we were just trying to connect, we don't necessarily need to revert tier,
+                    // but if the user cancelled the connect mandatory for a tier, we should probably revert.
+                    // However, visual selection might be kept or reverted.
+                    // Let's revert to keep it consistent with "Cancel".
+                    if (selectedTier !== tierState.currentTier) {
+                         setSelectedTier(tierState.currentTier);
+                    }
+                }}
+                onConnect={handleSupabaseConnected}
+            />
+
+            <SessionKeyModal 
+                isOpen={isSessionModalOpen}
+                onClose={() => setIsSessionModalOpen(false)}
+                onConfirm={handleMigrateToSession}
+                isLoading={isLoading}
+                error={error}
+            />
+
+            <PersistentKeyModal
+                isOpen={isPersistentModalOpen}
+                onClose={() => setIsPersistentModalOpen(false)}
+                onConfirm={handleMigrateToPersistent}
+                isLoading={isLoading}
+                error={error}
+            />
         </div>
     );
 };
-
-export default SecurityTierSelector;

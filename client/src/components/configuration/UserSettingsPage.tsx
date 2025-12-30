@@ -12,7 +12,8 @@ import {
     Shield,
     FileText,
     Scale,
-    MessageSquare
+    MessageSquare,
+    Save
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { StorageService } from '../../services/storageService';
@@ -27,7 +28,6 @@ const EXPORTABLE_KEYS = [
     'agent_activity_log',
     'vault_dealer_strategy',
     'agent_scheduler_tasks',
-    // We'll handle dealer settings specially to exclude sensitive parts
 ];
 
 // Keys that should NEVER be exported
@@ -69,11 +69,9 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
 
-    // Password for encryption during import (if prop is missing)
     const [importPassword, setImportPassword] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Export modal state
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportPassword, setExportPassword] = useState('');
 
@@ -86,7 +84,6 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
 
         setIsExporting(true);
         try {
-            // Collect exportable data
             const activityLogKey = StorageService.getUserKey('agent_activity_log');
             const strategyKey = StorageService.getUserKey('vault_dealer_strategy');
             const schedulerKey = StorageService.getUserKey('agent_scheduler_tasks');
@@ -97,7 +94,6 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                 StorageService.getItem(schedulerKey)
             ]);
 
-            // Get conversation history (decrypted)
             let conversations: Conversation[] = [];
             if (validatedPassword) {
                 const conversationMetas = await ConversationService.getHistory();
@@ -113,38 +109,30 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                 }
             }
 
-            // Get dealer settings (from IndexedDB via StorageService)
             const dealerStorageRaw = await StorageService.getItem(StorageService.getUserKey('vault_dealer_storage'));
             let dealerSettings = null;
             if (dealerStorageRaw) {
                 try {
                     const parsed = JSON.parse(dealerStorageRaw);
-                    // Export all Hyperliquid dealer settings
                     dealerSettings = {
-                        // Core Settings
                         strategyPrompt: parsed.settings?.strategyPrompt,
                         aggressiveMode: parsed.settings?.aggressiveMode,
                         maxLeverage: parsed.settings?.maxLeverage,
                         maxPositionSizeUSDC: parsed.settings?.maxPositionSizeUSDC,
                         maxOpenPositions: parsed.settings?.maxOpenPositions,
-                        // Bankroll
                         bankrollType: parsed.settings?.bankrollType,
                         manualBankroll: parsed.settings?.manualBankroll,
-                        // Trading Configuration
                         tradingPairs: parsed.settings?.tradingPairs,
                         checkIntervalSeconds: parsed.settings?.checkIntervalSeconds,
                         analysisTimeframe: parsed.settings?.analysisTimeframe,
                         historyCandles: parsed.settings?.historyCandles,
-                        // Macro Timeframe Configuration
                         macroTimeframeEnabled: parsed.settings?.macroTimeframeEnabled,
                         macroTimeframe: parsed.settings?.macroTimeframe,
                         macroEnabledIndicators: parsed.settings?.macroEnabledIndicators,
-                        // Indicator Configuration
                         indicatorSettings: parsed.settings?.indicatorSettings,
                         autonomousIndicators: parsed.settings?.autonomousIndicators,
                         selectedPreset: parsed.settings?.selectedPreset,
                         promptMode: parsed.settings?.promptMode,
-                        // Risk Protection
                         stopLossEnabled: parsed.settings?.stopLossEnabled,
                         stopLossPercent: parsed.settings?.stopLossPercent,
                         takeProfitEnabled: parsed.settings?.takeProfitEnabled,
@@ -155,40 +143,31 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                 }
             }
 
-            // Get Polymarket dealer settings (from IndexedDB via StorageService)
             const polymarketStorageRaw = await StorageService.getItem(StorageService.getUserKey('vault_polymarket_storage'));
             let polymarketSettings = null;
             let polymarketStrategyPrompt: string | undefined = undefined;
             if (polymarketStorageRaw) {
                 try {
                     const parsed = JSON.parse(polymarketStorageRaw);
-                    // Export all Polymarket settings with correct field names
                     polymarketSettings = {
-                        // Strategy
                         strategyPrompt: parsed.settings?.strategyPrompt,
                         promptMode: parsed.settings?.promptMode,
                         selectedPreset: parsed.settings?.selectedPreset,
-                        // Market Selection
                         marketSelectionMode: parsed.settings?.marketSelectionMode,
                         selectedMarkets: parsed.settings?.selectedMarkets,
                         allowedCategories: parsed.settings?.allowedCategories,
-                        // Risk Management
                         maxPositionSizeUSDC: parsed.settings?.maxPositionSizeUSDC,
                         maxOpenPositions: parsed.settings?.maxOpenPositions,
                         minLiquidity: parsed.settings?.minLiquidity,
                         minVolume24h: parsed.settings?.minVolume24h,
-                        // Additional thresholds
                         minVolumeThreshold: parsed.settings?.minVolumeThreshold,
                         minLiquidityThreshold: parsed.settings?.minLiquidityThreshold,
                         minSpreadThreshold: parsed.settings?.minSpreadThreshold,
                         confidenceThreshold: parsed.settings?.confidenceThreshold,
-                        // Bankroll
                         bankrollType: parsed.settings?.bankrollType,
                         manualBankroll: parsed.settings?.manualBankroll,
-                        // Timing
                         checkIntervalSeconds: parsed.settings?.checkIntervalSeconds,
                     };
-                    // Get custom strategy prompt separately for backwards compatibility
                     polymarketStrategyPrompt = parsed.settings?.strategyPrompt;
                 } catch (e) {
                     console.error('Failed to parse polymarket settings', e);
@@ -213,7 +192,6 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                 }
             };
 
-            // Create and download file
             const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -235,13 +213,11 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
         }
     };
 
-    // Open export password modal
     const initiateExport = () => {
         setExportPassword('');
         setShowExportModal(true);
     };
 
-    // Confirm export password
     const handleConfirmExport = () => {
         if (!exportPassword) {
             addNotification('Please enter your password');
@@ -256,7 +232,6 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
         executeExport(exportPassword);
     };
 
-    // Handle file selection for import
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
@@ -267,7 +242,6 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                 const content = e.target?.result as string;
                 const parsed = JSON.parse(content) as BackupData;
 
-                // Validate structure
                 if (!parsed.version || !parsed.data) {
                     addNotification('Invalid backup file format');
                     return;
@@ -282,13 +256,11 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
         };
         reader.readAsText(file);
 
-        // Reset input
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
     };
 
-    // Import data from backup
     const handleImport = async () => {
         if (!importData || !user?.uid) return;
 
@@ -296,25 +268,21 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
         try {
             const { data } = importData;
 
-            // Restore activity log
             if (data.activityLog?.length) {
                 const key = StorageService.getUserKey('agent_activity_log');
                 await StorageService.setItem(key, JSON.stringify(data.activityLog));
             }
 
-            // Restore scheduler tasks
             if (data.schedulerTasks?.length) {
                 const key = StorageService.getUserKey('agent_scheduler_tasks');
                 await StorageService.setItem(key, JSON.stringify(data.schedulerTasks));
             }
 
-            // Restore Hyperliquid strategy prompt
             if (data.hyperliquidDealer?.strategyPrompt) {
                 const key = StorageService.getUserKey('vault_dealer_strategy');
                 await StorageService.setItem(key, data.hyperliquidDealer.strategyPrompt);
             }
 
-            // Restore conversations (re-encrypt with current password)
             const passwordToUse = password || importPassword;
             if (data.conversations?.length) {
                 if (!passwordToUse) {
@@ -333,7 +301,6 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                 }
             }
 
-            // Restore Hyperliquid dealer settings (merge with existing)
             if (data.hyperliquidDealer?.settings) {
                 const existingRaw = await StorageService.getItem(StorageService.getUserKey('vault_dealer_storage'));
                 try {
@@ -348,7 +315,6 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                 }
             }
 
-            // Restore Polymarket dealer settings
             if (data.polymarketDealer?.settings || data.polymarketDealer?.strategyPrompt) {
                 console.log('[Import] Restoring Polymarket settings:', data.polymarketDealer);
                 const existingRaw = await StorageService.getItem(StorageService.getUserKey('vault_polymarket_storage'));
@@ -360,7 +326,6 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                             ...data.polymarketDealer.settings
                         };
                     }
-                    // Restore strategy prompt
                     if (data.polymarketDealer.strategyPrompt) {
                         existing.settings = {
                             ...existing.settings,
@@ -376,7 +341,6 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                 console.log('[Import] No Polymarket settings to restore');
             }
 
-            // Reload stores to reflect imported data in memory
             console.log('[Import] Reloading stores from storage...');
             await dealerStore.reloadFromStorage();
             await polymarketStore.reloadFromStorage();
@@ -392,18 +356,14 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
         }
     };
 
-    // Delete account and all data
     const handleDeleteAccount = async () => {
         if (!user || deleteConfirmText !== 'DELETE') return;
 
         setIsDeleting(true);
         try {
-            // Reset all in-memory stores to initial state
             dealerStore.reset();
             polymarketStore.reset();
 
-            // Call the unified delete account method
-            // This handles StorageService.clearUserData(user.id) and Supabase deletion (RPC or Edge Function)
             await deleteAccount();
 
             addNotification('Account deleted successfully');
@@ -416,164 +376,148 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
 
     return (
         <motion.div
-            className="h-full flex flex-col gap-4 overflow-y-auto custom-scrollbar pb-4"
-            initial={{ opacity: 0, y: 20 }}
+            className="flex flex-col gap-6"
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
         >
-            {/* Security Tier Section */}
-            <div className="glass-panel p-5 rounded">
-                <SecurityTierSelector
-                    onTierChange={(tier) => addNotification(`Security tier changed to ${tier}`)}
-                />
+            <div className="flex flex-col gap-2 mb-2">
+                <h1 className="text-3xl font-light tracking-tight text-white">User Settings</h1>
+                <p className="text-sm text-gray-500 font-light">Manage security, backups, and account data.</p>
             </div>
 
-            {/* Legal Links Section */}
-            <div className="glass-panel p-5 rounded">
-                <div className="flex items-center gap-2 mb-4">
-                    <Scale className="h-4 w-4 text-[#E7FE55]" />
-                    <span className="text-sm font-semibold text-white">Legal</span>
-                </div>
+            {/* Two Column Masonry Layout */}
+            <div className="columns-1 lg:columns-2 gap-6 space-y-6">
+                {/* Security Tier Section */}
+                <section className="rounded-lg border border-gray-800/60 overflow-hidden break-inside-avoid">
+                    <div className="px-6 py-4 border-b border-gray-800/60 flex items-center gap-3">
+                        <div className="p-2 bg-gray-800/30 rounded-lg">
+                            <Shield className="h-4 w-4 text-emerald-400" />
+                        </div>
+                        <h2 className="text-sm font-medium text-gray-200 tracking-wide">Security Tier</h2>
+                    </div>
+                    <div className="p-6">
+                        <SecurityTierSelector
+                            onTierChange={(tier) => addNotification(`Security tier changed to ${tier}`)}
+                        />
+                    </div>
+                </section>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <a
-                        href="/terms.html"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-4 bg-[#14151a] border border-[#232328] rounded hover:border-[#E7FE55]/30 transition-all group"
-                    >
-                        <div className="p-2 rounded bg-[#E7FE55]/10">
-                            <FileText size={18} className="text-[#E7FE55]" />
+                {/* Data Export/Import Section */}
+                <section className="rounded-lg border border-gray-800/60 overflow-hidden break-inside-avoid">
+                    <div className="px-6 py-4 border-b border-gray-800/60 flex items-center gap-3">
+                        <div className="p-2 bg-gray-800/30 rounded-lg">
+                            <Save className="h-4 w-4 text-blue-400" />
                         </div>
                         <div className="flex-1">
-                            <span className="text-sm font-medium text-white group-hover:text-[#E7FE55] transition-colors">
-                                Terms of Use
-                            </span>
-                            <p className="text-[10px] text-[#747580]">Read our terms and conditions</p>
-                        </div>
-                        <ExternalLink size={14} className="text-[#747580] group-hover:text-[#E7FE55]" />
-                    </a>
-
-                    <a
-                        href="/privacy.html"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-4 bg-[#14151a] border border-[#232328] rounded hover:border-[#E7FE55]/30 transition-all group"
-                    >
-                        <div className="p-2 rounded bg-[#E7FE55]/10">
-                            <Shield size={18} className="text-[#E7FE55]" />
-                        </div>
-                        <div className="flex-1">
-                            <span className="text-sm font-medium text-white group-hover:text-[#E7FE55] transition-colors">
-                                Privacy Policy
-                            </span>
-                            <p className="text-[10px] text-[#747580]">How we handle your data</p>
-                        </div>
-                        <ExternalLink size={14} className="text-[#747580] group-hover:text-[#E7FE55]" />
-                    </a>
-                </div>
-            </div>
-
-            {/* Data Export/Import Section */}
-            <div className="glass-panel p-5 rounded">
-                <div className="flex items-center gap-2 mb-4">
-                    <FileJson className="h-4 w-4 text-[#E7FE55]" />
-                    <span className="text-sm font-semibold text-white">Data Backup</span>
-                </div>
-
-                <p className="text-xs text-[#747580] mb-4">
-                    Export your settings, activity history, and prompts to restore on another device.
-                    <span className="text-amber-400"> Private keys and sensitive data are never included.</span>
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Export Button */}
-                    <button
-                        onClick={initiateExport}
-                        disabled={isExporting}
-                        className="flex items-center gap-3 p-4 bg-[#14151a] border border-[#232328] rounded hover:border-[#E7FE55]/30 transition-all group disabled:opacity-50"
-                    >
-                        <div className="p-2 rounded bg-emerald-500/10">
-                            <Download size={18} className="text-emerald-400" />
-                        </div>
-                        <div className="flex-1 text-left">
-                            <span className="text-sm font-medium text-white group-hover:text-emerald-400 transition-colors">
-                                {isExporting ? 'Exporting...' : 'Export Data'}
-                            </span>
-                            <p className="text-[10px] text-[#747580]">Download your settings as JSON</p>
-                        </div>
-                    </button>
-
-                    {/* Import Button */}
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-3 p-4 bg-[#14151a] border border-[#232328] rounded hover:border-[#E7FE55]/30 transition-all group"
-                    >
-                        <div className="p-2 rounded bg-blue-500/10">
-                            <Upload size={18} className="text-blue-400" />
-                        </div>
-                        <div className="flex-1 text-left">
-                            <span className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors">
-                                Import Data
-                            </span>
-                            <p className="text-[10px] text-[#747580]">Restore from a backup file</p>
-                        </div>
-                    </button>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".json"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                    />
-                </div>
-            </div>
-
-            {/* Account Deletion Section */}
-            <div className="glass-panel p-5 rounded border border-red-500/20">
-                <div className="flex items-center gap-2 mb-4">
-                    <Trash2 className="h-4 w-4 text-red-400" />
-                    <span className="text-sm font-semibold text-white">Danger Zone</span>
-                </div>
-
-                <div className="bg-red-500/5 border border-red-500/20 rounded p-4 mb-4">
-                    <div className="flex gap-3">
-                        <AlertTriangle size={20} className="text-red-400 shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-sm font-medium text-red-400 mb-1">Delete Account</p>
-                            <p className="text-xs text-[#a0a1a8]">
-                                This will permanently delete all your data including activity history,
-                                dealer configurations, prompts, and scheduled tasks. This action cannot be undone.
-                            </p>
+                            <h2 className="text-sm font-medium text-gray-200 tracking-wide">Data Backup</h2>
+                            <p className="text-[11px] text-gray-500 mt-0.5">Export your settings to move to another device</p>
                         </div>
                     </div>
-                </div>
 
-                <button
-                    onClick={() => setShowDeleteModal(true)}
-                    className="px-4 py-2 bg-red-500/10 border border-red-500/30 rounded text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors"
-                >
-                    Delete My Account
-                </button>
+                    <div className="p-6">
+                        <p className="text-xs text-gray-500 mb-5 font-light leading-relaxed">
+                            Export your full configuration history, conversations, and strategies to a JSON file.
+                            <br />
+                            <span className="text-amber-500/80 font-medium"> Note: Private keys and sensitive API tokens are never included in exports.</span>
+                        </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Export Button */}
+                            <button
+                                onClick={initiateExport}
+                                disabled={isExporting}
+                                className="group flex items-start gap-4 p-4 border border-gray-800/60 rounded-lg hover:border-gray-700 transition-all text-left"
+                            >
+                                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 group-hover:text-emerald-400 transition-colors">
+                                    <Download size={18} />
+                                </div>
+                                <div className="flex-1">
+                                    <span className="text-sm font-semibold text-gray-200 block mb-1 group-hover:text-white transition-colors">
+                                        {isExporting ? 'Exporting...' : 'Export Data'}
+                                    </span>
+                                    <p className="text-[11px] text-gray-500 leading-snug">Download settings backup file</p>
+                                </div>
+                            </button>
+
+                            {/* Import Button */}
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="group flex items-start gap-4 p-4 border border-gray-800/60 rounded-lg hover:border-gray-700 transition-all text-left"
+                            >
+                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500 group-hover:text-blue-400 transition-colors">
+                                    <Upload size={18} />
+                                </div>
+                                <div className="flex-1">
+                                    <span className="text-sm font-semibold text-gray-200 block mb-1 group-hover:text-white transition-colors">
+                                        Import Data
+                                    </span>
+                                    <p className="text-[11px] text-gray-500 leading-snug">Restore from backup JSON</p>
+                                </div>
+                            </button>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".json"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                            />
+                        </div>
+                    </div>
+                </section>
+
+                {/* Account Deletion Section */}
+                <section className="rounded-lg border border-red-900/20 overflow-hidden break-inside-avoid">
+                    <div className="px-6 py-4 border-b border-red-900/20 flex items-center gap-3 bg-red-950/10">
+                        <div className="p-2 bg-red-900/20 rounded-lg">
+                            <Trash2 className="h-4 w-4 text-red-400" />
+                        </div>
+                        <div className="flex-1">
+                            <h2 className="text-sm font-medium text-red-200 tracking-wide">Danger Zone</h2>
+                        </div>
+                    </div>
+
+                    <div className="p-6">
+                        <div className="mb-4">
+                            <h3 className="text-sm font-medium text-red-300 mb-1">Delete Account</h3>
+                            <p className="text-xs text-gray-500 leading-relaxed">
+                                Permanently remove your account and all associated data. This involves clearing your local storage, 
+                                dealer settings, and cloud database records. <strong className="text-red-400/80">This action cannot be undone.</strong>
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={() => setShowDeleteModal(true)}
+                            className="px-5 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs font-semibold hover:bg-red-500 hover:text-white hover:border-red-500 transition-all whitespace-nowrap"
+                        >
+                            Delete Account
+                        </button>
+                    </div>
+                </section>
             </div>
 
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-[#14151a] border border-[#232328] w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-[#13141A] border border-gray-800 w-full max-w-md rounded-xl shadow-2xl overflow-hidden"
+                    >
                         <div className="p-6">
-                            <div className="flex items-center gap-3 mb-4">
+                            <div className="flex items-center gap-4 mb-5">
                                 <div className="p-3 rounded-full bg-red-500/10">
                                     <AlertTriangle size={24} className="text-red-400" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-white">Delete Account</h3>
-                                    <p className="text-xs text-[#747580]">This action is irreversible</p>
+                                    <h3 className="text-lg font-bold text-white tracking-tight">Delete Account</h3>
+                                    <p className="text-xs text-gray-500">This action is irreversible</p>
                                 </div>
                             </div>
 
-                            <p className="text-sm text-[#a0a1a8] mb-4">
-                                All your data will be permanently deleted. To confirm, type <strong className="text-white">DELETE</strong> below:
+                            <p className="text-sm text-gray-400 mb-5 leading-relaxed">
+                                All your data will be permanently deleted. 
+                                <br/>To confirm, type <strong className="text-white">DELETE</strong> below:
                             </p>
 
                             <input
@@ -581,7 +525,7 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                                 value={deleteConfirmText}
                                 onChange={(e) => setDeleteConfirmText(e.target.value)}
                                 placeholder="Type DELETE to confirm"
-                                className="w-full px-3 py-2 bg-[#0f1015] border border-[#232328] rounded text-white placeholder:text-[#3a3b42] focus:outline-none focus:border-red-500/50 mb-4"
+                                className="w-full px-4 py-2.5 bg-transparent border border-gray-800 rounded-lg text-white placeholder:text-gray-600 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/20 transition-all mb-5 text-sm"
                             />
 
                             <div className="flex gap-3">
@@ -590,7 +534,7 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                                         setShowDeleteModal(false);
                                         setDeleteConfirmText('');
                                     }}
-                                    className="flex-1 px-4 py-2 bg-[#232328] rounded text-white text-sm font-medium hover:bg-[#2a2b30] transition-colors"
+                                    className="flex-1 px-4 py-2.5 bg-gray-800 rounded-lg text-gray-300 text-sm font-medium hover:bg-gray-700 transition-colors"
                                 >
                                     Cancel
                                 </button>
@@ -598,114 +542,89 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                                     onClick={handleDeleteAccount}
                                     disabled={deleteConfirmText !== 'DELETE' || isDeleting}
                                     className={cn(
-                                        "flex-1 px-4 py-2 rounded text-sm font-medium transition-colors",
+                                        "flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
                                         deleteConfirmText === 'DELETE'
                                             ? "bg-red-500 text-white hover:bg-red-600"
-                                            : "bg-red-500/30 text-red-400/50 cursor-not-allowed"
+                                            : "bg-red-500/20 text-red-500/40 cursor-not-allowed"
                                     )}
                                 >
                                     {isDeleting ? 'Deleting...' : 'Delete Account'}
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
 
             {/* Import Preview Modal */}
             {showImportModal && importData && (
                 <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-[#14151a] border border-[#232328] w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-[#13141A] border border-gray-800 w-full max-w-md rounded-xl shadow-2xl overflow-hidden"
+                    >
                         <div className="p-6">
-                            <div className="flex items-center gap-3 mb-4">
+                            <div className="flex items-center gap-4 mb-5">
                                 <div className="p-3 rounded-full bg-blue-500/10">
                                     <Upload size={24} className="text-blue-400" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-white">Import Backup</h3>
-                                    <p className="text-xs text-[#747580]">
+                                    <h3 className="text-lg font-bold text-white tracking-tight">Import Backup</h3>
+                                    <p className="text-xs text-gray-500">
                                         Created: {new Date(importData.exportedAt).toLocaleDateString()}
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="bg-[#0f1015] border border-[#232328] rounded p-4 mb-4 space-y-2">
-                                <p className="text-xs text-[#747580] uppercase tracking-wider mb-2">Data to restore:</p>
+                            <div className="border border-gray-800 rounded-lg p-4 mb-5 space-y-2">
+                                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-2">Data to restore:</p>
 
                                 {importData.data.activityLog?.length ? (
-                                    <div className="flex items-center gap-2 text-sm text-[#a0a1a8]">
-                                        <Check size={14} className="text-emerald-400" />
+                                    <div className="flex items-center gap-2 text-xs text-gray-300">
+                                        <Check size={12} className="text-emerald-500" />
                                         <span>Activity Log ({importData.data.activityLog.length} items)</span>
                                     </div>
                                 ) : null}
 
                                 {importData.data.conversations?.length ? (
-                                    <div className="flex items-center gap-2 text-sm text-[#a0a1a8]">
-                                        <Check size={14} className="text-emerald-400" />
+                                    <div className="flex items-center gap-2 text-xs text-gray-300">
+                                        <Check size={12} className="text-emerald-500" />
                                         <span>Conversations ({importData.data.conversations.length} chats)</span>
                                     </div>
                                 ) : null}
 
                                 {importData.data.hyperliquidDealer?.settings ? (
-                                    <div className="flex items-center gap-2 text-sm text-[#a0a1a8]">
-                                        <Check size={14} className="text-emerald-400" />
+                                    <div className="flex items-center gap-2 text-xs text-gray-300">
+                                        <Check size={12} className="text-emerald-500" />
                                         <span>Hyperliquid Dealer Settings</span>
                                     </div>
                                 ) : null}
 
-                                {importData.data.hyperliquidDealer?.strategyPrompt ? (
-                                    <div className="flex items-center gap-2 text-sm text-[#a0a1a8]">
-                                        <Check size={14} className="text-emerald-400" />
-                                        <span>Hyperliquid Strategy Prompt</span>
-                                    </div>
-                                ) : null}
-
-                                {importData.data.polymarketDealer?.settings ? (
-                                    <div className="flex items-center gap-2 text-sm text-[#a0a1a8]">
-                                        <Check size={14} className="text-emerald-400" />
-                                        <span>Polymarket Dealer Settings</span>
-                                    </div>
-                                ) : null}
-
-                                {importData.data.polymarketDealer?.strategyPrompt ? (
-                                    <div className="flex items-center gap-2 text-sm text-[#a0a1a8]">
-                                        <Check size={14} className="text-emerald-400" />
-                                        <span>Polymarket Strategy Prompt</span>
-                                    </div>
-                                ) : null}
-
-                                {importData.data.schedulerTasks?.length ? (
-                                    <div className="flex items-center gap-2 text-sm text-[#a0a1a8]">
-                                        <Check size={14} className="text-emerald-400" />
-                                        <span>Scheduled Tasks ({importData.data.schedulerTasks.length} items)</span>
-                                    </div>
-                                ) : null}
+                                <div className="text-[10px] text-gray-600 pl-5">
+                                    ...and {Object.keys(importData.data).length - 2} other data points
+                                </div>
                             </div>
 
-                            {/* Password input for encryption if restoring conversations */}
                             {importData.data.conversations?.length ? (
-                                <div className="mb-4">
-                                    <p className="text-xs text-[#747580] mb-2">
-                                        Encryption password required to secure imported conversations:
+                                <div className="mb-5">
+                                    <p className="text-xs text-gray-400 mb-2">
+                                        Encryption password required:
                                     </p>
                                     <input
                                         type="password"
                                         value={importPassword}
                                         onChange={(e) => setImportPassword(e.target.value)}
                                         placeholder="Enter encryption password"
-                                        className="w-full px-3 py-2 bg-[#0f1015] border border-[#232328] rounded text-white placeholder:text-[#3a3b42] focus:outline-none focus:border-[#E7FE55]/50"
+                                        className="w-full px-4 py-2.5 bg-transparent border border-gray-800 rounded-lg text-white placeholder:text-gray-600 focus:outline-none focus:border-blue-500/50 transition-all text-sm"
                                     />
                                     {!importPassword && !password && (
-                                        <p className="text-[10px] text-amber-500 mt-1">
-                                            Warning: Without password, conversations will NOT be imported.
+                                        <p className="text-[10px] text-amber-500 mt-1.5 flex items-center gap-1">
+                                            <AlertTriangle size={10} /> Password required to decrypt conversations
                                         </p>
                                     )}
                                 </div>
                             ) : null}
-
-                            <p className="text-xs text-amber-400 mb-4">
-                                ⚠️ This will overwrite your current settings. Are you sure?
-                            </p>
 
                             <div className="flex gap-3">
                                 <button
@@ -714,49 +633,53 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                                         setImportData(null);
                                         setImportPassword('');
                                     }}
-                                    className="flex-1 px-4 py-2 bg-[#232328] rounded text-white text-sm font-medium hover:bg-[#2a2b30] transition-colors"
+                                    className="flex-1 px-4 py-2.5 bg-gray-800 rounded-lg text-gray-300 text-sm font-medium hover:bg-gray-700 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleImport}
                                     disabled={isImporting}
-                                    className="flex-1 px-4 py-2 bg-[#E7FE55] rounded text-black text-sm font-semibold hover:bg-[#d9f044] transition-colors disabled:opacity-50"
+                                    className="flex-1 px-4 py-2.5 bg-white text-black rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
                                 >
                                     {isImporting ? 'Importing...' : 'Restore Data'}
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
 
             {/* Export Password Modal */}
             {showExportModal && (
                 <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-[#14151a] border border-[#232328] w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-[#13141A] border border-gray-800 w-full max-w-md rounded-xl shadow-2xl overflow-hidden"
+                    >
                         <div className="p-6">
-                            <div className="flex items-center gap-3 mb-4">
+                            <div className="flex items-center gap-4 mb-5">
                                 <div className="p-3 rounded-full bg-emerald-500/10">
                                     <Download size={24} className="text-emerald-400" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-white">Confirm Data Export</h3>
-                                    <p className="text-xs text-[#747580]">Security check required</p>
+                                    <h3 className="text-lg font-bold text-white tracking-tight">Confirm Export</h3>
+                                    <p className="text-xs text-gray-500">Security check required</p>
                                 </div>
                             </div>
 
-                            <p className="text-sm text-[#a0a1a8] mb-4">
+                            <p className="text-sm text-gray-400 mb-5 leading-relaxed">
                                 Please enter your Vault password to authorize the export. This ensures only you can download your data.
                             </p>
 
-                            <div className="mb-4">
+                            <div className="mb-5">
                                 <input
                                     type="password"
                                     value={exportPassword}
                                     onChange={(e) => setExportPassword(e.target.value)}
                                     placeholder="Enter Vault password"
-                                    className="w-full px-3 py-2 bg-[#0f1015] border border-[#232328] rounded text-white placeholder:text-[#3a3b42] focus:outline-none focus:border-[#E7FE55]/50"
+                                    className="w-full px-4 py-2.5 bg-transparent border border-gray-800 rounded-lg text-white placeholder:text-gray-600 focus:outline-none focus:border-emerald-500/50 transition-all text-sm"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') handleConfirmExport();
                                     }}
@@ -769,19 +692,19 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
                                         setShowExportModal(false);
                                         setExportPassword('');
                                     }}
-                                    className="flex-1 px-4 py-2 bg-[#232328] rounded text-white text-sm font-medium hover:bg-[#2a2b30] transition-colors"
+                                    className="flex-1 px-4 py-2.5 bg-gray-800 rounded-lg text-gray-300 text-sm font-medium hover:bg-gray-700 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleConfirmExport}
-                                    className="flex-1 px-4 py-2 bg-[#E7FE55] rounded text-black text-sm font-semibold hover:bg-[#d9f044] transition-colors"
+                                    className="flex-1 px-4 py-2.5 bg-white text-black rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors"
                                 >
                                     Export
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
         </motion.div>
