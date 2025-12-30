@@ -169,14 +169,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ vault, pas
         >
             {/* Centered Container */}
             <div className="flex-1 w-full max-w-5xl mx-auto px-6 py-8 flex flex-col gap-6">
-                
-                {/* Header */}
-                {activeTab !== 'user' && (
-                    <header className="mb-2">
-                        <h1 className="text-3xl font-light tracking-tight text-white">System Configuration</h1>
-                        <p className="text-sm text-gray-500 mt-2 font-light">Manage your AI providers, model assignments, and network connections.</p>
-                    </header>
-                )}
 
                 {/* Conditional Content */}
                 {activeTab === 'user' ? (

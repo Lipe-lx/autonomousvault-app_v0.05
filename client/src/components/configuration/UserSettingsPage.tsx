@@ -382,11 +382,7 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
         >
-            <div className="flex flex-col gap-2 mb-2">
-                <h1 className="text-3xl font-light tracking-tight text-white">User Settings</h1>
-                <p className="text-sm text-gray-500 font-light">Manage security, backups, and account data.</p>
-            </div>
-
+            
             {/* Two Column Masonry Layout */}
             <div className="columns-1 lg:columns-2 gap-6 space-y-6">
                 {/* Security & Execution Section */}
