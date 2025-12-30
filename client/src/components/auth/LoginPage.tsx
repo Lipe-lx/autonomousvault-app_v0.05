@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { TermsOfUse } from '../../pages/TermsOfUse';
 
 export function LoginPage() {
     const { 
@@ -20,6 +21,27 @@ export function LoginPage() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+    const [showTerms, setShowTerms] = useState(false);
+
+    if (showTerms) {
+        return <TermsOfUse onBack={() => setShowTerms(false)} />;
+    }
+
+    // DEBUG: Log URL parameters on mount to check for OAuth return values
+    React.useEffect(() => {
+        console.log('[LoginPage] Mounted. URL:', window.location.href);
+        console.log('[LoginPage] Search:', window.location.search);
+        console.log('[LoginPage] Hash:', window.location.hash);
+        
+        // Check for specific error parameters from Supabase/Provider
+        const params = new URLSearchParams(window.location.hash.substring(1)); // Supabase typically uses hash for implicit flow or search for code
+        const error = params.get('error');
+        const errorDesc = params.get('error_description');
+        if (error || errorDesc) {
+            console.error('[LoginPage] OAuth Error detected in URL:', error, errorDesc);
+            setError(decodeURIComponent(errorDesc || error || 'Unknown OAuth error'));
+        }
+    }, []);
 
     const handleOAuthSignIn = async (provider: 'google' | 'github' | 'discord') => {
         setError(null);
@@ -267,7 +289,10 @@ export function LoginPage() {
 
                 {/* Footer */}
                 <p className="text-center text-[#5a5b63] text-xs mt-6">
-                    By continuing, you agree to our Terms of Service
+                    By continuing, you agree to our{' '}
+                    <button onClick={() => setShowTerms(true)} className="text-[#E7FE55] hover:underline">
+                        Terms of Use
+                    </button>
                 </p>
             </div>
         </div>

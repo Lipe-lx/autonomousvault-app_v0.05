@@ -887,8 +887,8 @@ export default function App() {
                             />
                         )}
 
-                        {activeTab === AppTab.PRIVACY && <PrivacyPolicy />}
-                        {activeTab === AppTab.TERMS && <TermsOfUse />}
+                        {activeTab === AppTab.PRIVACY && <PrivacyPolicy onBack={() => setActiveTab(AppTab.DASHBOARD)} />}
+                        {activeTab === AppTab.TERMS && <TermsOfUse onBack={() => setActiveTab(AppTab.DASHBOARD)} />}
                     </div>
                 </div>
                 {activeTab !== AppTab.AGENT && <Footer onNavigate={setActiveTab} />}

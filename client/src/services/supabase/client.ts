@@ -50,6 +50,11 @@ let supabaseClient: SupabaseClient | null = null;
  * Call this once at app startup
  */
 export async function initializeSupabase(): Promise<boolean> {
+    // If client is already initialized, don't re-create it (prevents loss of state/listeners)
+    if (supabaseClient) {
+        return true;
+    }
+
     const config = getSupabaseConfig();
 
     if (!config.url || !config.anonKey) {

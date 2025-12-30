@@ -59,7 +59,7 @@ interface BackupData {
 }
 
 export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotification, password }) => {
-    const { user, logout } = useAuth();
+    const { user, logout, deleteAccount } = useAuth();
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -394,7 +394,7 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
 
     // Delete account and all data
     const handleDeleteAccount = async () => {
-        if (!user?.uid || deleteConfirmText !== 'DELETE') return;
+        if (!user || deleteConfirmText !== 'DELETE') return;
 
         setIsDeleting(true);
         try {
@@ -402,17 +402,14 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ addNotificat
             dealerStore.reset();
             polymarketStore.reset();
 
-            // Clear all user-scoped data from IndexedDB
-            // This includes: conversations, dealer settings, activity logs, vault data, API keys, etc.
-            await StorageService.clearUserData(user.uid);
-
-            // Sign out
-            await logout();
+            // Call the unified delete account method
+            // This handles StorageService.clearUserData(user.id) and Supabase deletion (RPC or Edge Function)
+            await deleteAccount();
 
             addNotification('Account deleted successfully');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Delete account failed:', error);
-            addNotification('Failed to delete account');
+            addNotification(error.message || 'Failed to delete account');
             setIsDeleting(false);
         }
     };

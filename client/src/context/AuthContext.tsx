@@ -26,6 +26,7 @@ interface AuthContextType {
     signInWithEmail: (email: string, password: string) => Promise<void>;
     signUp: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
+    deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,6 +64,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Initialize Supabase and listen to auth state changes
     useEffect(() => {
         const initAuth = async () => {
+            console.log('[AuthContext] Initializing auth...');
+            
             // Check if Supabase is configured
             if (!isSupabaseConfigured()) {
                 console.warn('[AuthContext] Supabase not configured. Auth will not work until configured.');
@@ -78,12 +81,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             // Get initial user
             const currentUser = mapToUser(supabaseAuth.getUser());
+            console.log('[AuthContext] Initial user from service:', currentUser?.uid);
             setUser(currentUser);
 
             // Set user context for StorageService (user-scoped storage)
             StorageService.setUserId(currentUser?.uid || null);
 
             if (currentUser?.uid) {
+                console.log('[AuthContext] Loading user stores...');
                 await StorageService.migrateToUserScoped();
                 await aiConfigStore.reload();
                 await dealerStore.reloadFromStorage();
@@ -192,6 +197,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
+    const deleteAccount = async () => {
+        try {
+            await supabaseAuth.deleteAccount();
+        } catch (error) {
+            console.error('Delete account error:', error);
+            throw error;
+        }
+    };
+
     const value: AuthContextType = {
         user,
         loading,
@@ -203,6 +217,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         signInWithEmail,
         signUp,
         logout,
+        deleteAccount,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

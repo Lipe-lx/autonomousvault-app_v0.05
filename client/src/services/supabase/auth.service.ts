@@ -72,41 +72,77 @@ export class SupabaseAuthService {
      * Sign in with Google OAuth
      */
     async signInWithGoogle(): Promise<SupabaseUser> {
-        return this.signInWithProvider('google');
+        return this.signInWithProvider('google', {
+            queryParams: {
+                access_type: 'offline',
+                prompt: 'consent',
+            },
+        });
     }
 
     /**
      * Sign in with GitHub OAuth
      */
     async signInWithGitHub(): Promise<SupabaseUser> {
-        return this.signInWithProvider('github');
+        // GitHub requires explicit scopes for email access
+        return this.signInWithProvider('github', {
+            scopes: 'read:user user:email'
+        });
     }
 
     /**
      * Sign in with Discord OAuth
      */
     async signInWithDiscord(): Promise<SupabaseUser> {
-        return this.signInWithProvider('discord');
+        // Discord requires explicit scopes for identity and email
+        return this.signInWithProvider('discord', {
+            scopes: 'identify email'
+        });
     }
 
     /**
      * Generic OAuth sign in
      */
-    async signInWithProvider(provider: 'google' | 'github' | 'discord'): Promise<SupabaseUser> {
+    async signInWithProvider(
+        provider: 'google' | 'github' | 'discord',
+        options?: {
+            scopes?: string;
+            queryParams?: { [key: string]: string };
+        }
+    ): Promise<SupabaseUser> {
         const supabase = getSupabaseClient();
-        if (!supabase) throw new Error('Supabase not initialized');
+        if (!supabase) {
+            console.error('[Auth] Supabase client not initialized');
+            throw new Error('Supabase not initialized');
+        }
 
-        const { data, error } = await supabase.auth.signInWithOAuth({
-            provider,
-            options: {
-                redirectTo: window.location.origin
+        console.log(`[Auth] Starting sign in with ${provider}...`, options);
+
+        try {
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider,
+                options: {
+                    redirectTo: window.location.origin,
+                    scopes: options?.scopes,
+                    queryParams: options?.queryParams,
+                    skipBrowserRedirect: false,
+                }
+            });
+
+            if (error) {
+                console.error(`[Auth] Error signing in with ${provider}:`, error);
+                throw error;
             }
-        });
 
-        if (error) throw error;
+            console.log(`[Auth] params for ${provider} sign in initiated`, data);
 
-        // User will be set via onAuthStateChange after redirect
-        return this.currentUser!;
+            // Note: Since we are redirecting, this return might not be reached immediately
+            // But we return user if it somehow continues or for type consistency
+            return this.currentUser!;
+        } catch (err) {
+            console.error(`[Auth] Unexpected error during ${provider} sign in:`, err);
+            throw err;
+        }
     }
 
     /**
@@ -217,6 +253,62 @@ export class SupabaseAuthService {
     }
 
     /**
+     * Delete account permanently
+     * This will:
+     * 1. Clear all local storage data
+     * 2. Delete user from Supabase Auth (triggers CASCADE delete of all user data)
+     * 
+     * WARNING: This action is irreversible!
+     */
+    async deleteAccount(): Promise<void> {
+        const supabase = getSupabaseClient();
+        if (!supabase) throw new Error('Supabase not initialized');
+
+        // Get current user to ensure they're authenticated
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        // Clear local storage first
+        try {
+            // Clear IndexedDB (via StorageService)
+            const { StorageService } = await import('../storageService');
+            await StorageService.clearUserData(user.id);
+            console.log('[Auth] Local storage cleared');
+        } catch (e) {
+            console.warn('[Auth] Failed to clear local storage:', e);
+        }
+
+        // Delete user from Supabase Auth
+        // Note: This requires the user to have the ability to delete themselves
+        // In Supabase, this is typically done via an Edge Function or Admin API
+        // For now, we'll use the RPC function if available, or just sign out
+        try {
+            // Try RPC function first (requires setup in Supabase)
+            const { error: rpcError } = await supabase.rpc('delete_user');
+            
+            if (rpcError) {
+                // RPC not available, try direct admin deletion if service role
+                console.warn('[Auth] RPC delete_user not available, signing out only:', rpcError.message);
+                // Sign out the user - they'll need to contact support for full deletion
+                await this.logout();
+                throw new Error('Account deletion requires admin action. Please contact support or delete via Supabase dashboard.');
+            }
+        } catch (e: any) {
+            if (e.message?.includes('contact support')) {
+                throw e;
+            }
+            // If RPC failed for other reasons, still sign out
+            await this.logout();
+            throw new Error('Account deletion failed. You have been signed out. Please contact support to complete account deletion.');
+        }
+
+        // Clear current user and notify
+        this.currentUser = null;
+        this.notifyListeners();
+        console.log('[Auth] Account deleted successfully');
+    }
+
+    /**
      * Initialize auth listener
      */
     async initialize(): Promise<void> {
@@ -227,13 +319,26 @@ export class SupabaseAuthService {
         }
 
         // Set up auth state listener
-        supabase.auth.onAuthStateChange((_event: any, session: any) => {
+        supabase.auth.onAuthStateChange((event, session) => {
+            console.log(`[SupabaseAuth] Auth state change: ${event}`, session?.user?.email);
+            
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                console.log('[SupabaseAuth] User signed in/refreshed');
+            } else if (event === 'SIGNED_OUT') {
+                console.log('[SupabaseAuth] User signed out');
+            }
+
             this.currentUser = session ? mapSupabaseUser(session.user) : null;
             this.notifyListeners();
         });
 
         // Get initial session
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+            console.error('[SupabaseAuth] Error getting initial session:', error);
+        }
+        
+        console.log('[SupabaseAuth] Initial session check:', session ? 'Session found' : 'No session found');
         this.currentUser = session ? mapSupabaseUser(session.user) : null;
         this.notifyListeners();
     }

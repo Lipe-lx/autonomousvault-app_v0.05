@@ -60,9 +60,9 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({ userId }) => {
                         </ul>
                     </div>
 
-                    <p className="text-xs text-center text-slate-500 mt-4 leading-relaxed">
+                    <p className="text-sm text-center text-slate-400 mt-4 leading-relaxed">
                         By clicking "I Agree", you acknowledge that you have read and agree to our<br />
-                        <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-[#E7FE55] hover:underline">Terms of Use</a> and <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-[#E7FE55] hover:underline">Privacy Policy</a>.
+                        <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-[#E7FE55] hover:underline font-medium">Terms of Use</a> and <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-[#E7FE55] hover:underline font-medium">Privacy Policy</a>.
                     </p>
                 </div>
 

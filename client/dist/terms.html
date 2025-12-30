@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Use - AutonomousVault</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-[#0f172a] text-slate-200">
+    <div class="min-h-screen p-8">
+        <div class="max-w-3xl mx-auto space-y-8">
+            <!-- Header -->
+            <div class="border-b border-slate-700 pb-6 mb-10">
+                <h1 class="text-4xl font-light text-white mb-2">Terms of Use</h1>
+                <p class="text-slate-400">Effective Date: December 23, 2025</p>
+            </div>
+
+            <!-- Critical Disclaimer -->
+            <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 flex flex-col gap-4">
+                <div class="flex items-center gap-3 text-red-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/></svg>
+                    <h2 class="text-xl font-semibold">Critical Disclaimer</h2>
+                </div>
+                <p class="text-sm leading-relaxed text-red-100/80">
+                    AutonomousVault is experimental, open-source software. It is provided "AS IS", without warranty of any kind.
+                    You use this software entirely at your own risk. The developers constitute a non-custodial entity and accept
+                    no liability for lost funds, private key mismanagement, or protocol failures.
+                </p>
+            </div>
+
+            <section class="space-y-4">
+                <div class="flex items-center gap-2 text-[#E7FE55]">
+                    <h2 class="text-2xl font-light text-white">1. Self-Custody Model</h2>
+                </div>
+                <p class="leading-relaxed text-slate-300">
+                    By using AutonomousVault, you acknowledge that:
+                </p>
+                <ul class="list-disc pl-6 space-y-2 text-slate-400">
+                    <li>You are the sole custodian of your cryptographic private keys.</li>
+                    <li>Private keys are encrypted and stored solely within your device's browser (IndexedDB).</li>
+                    <li>We (the developers) never have access to your private keys or funds.</li>
+                    <li>If you lose your password or clear your browser data without a backup, your funds are permanently lost.</li>
+                </ul>
+            </section>
+
+            <section class="space-y-4">
+                <div class="flex items-center gap-2 text-[#E7FE55]">
+                    <h2 class="text-2xl font-light text-white">2. Universal Data Liability</h2>
+                </div>
+                <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
+                    <div class="flex items-start gap-3">
+                        <svg class="text-red-400 shrink-0 mt-1" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/></svg>
+                        <div class="space-y-2">
+                            <h3 class="text-red-200 font-medium">Full User Responsibility</h3>
+                            <p class="text-red-200/80 text-sm leading-relaxed">
+                                The user assumes <strong>FULL RESPONSIBILITY</strong> for data security, custody, and management in <strong>ALL MODES OF OPERATION</strong> (including "Local-Only" and "24/7 Server Mode").
+                            </p>
+                            <p class="text-red-200/80 text-sm leading-relaxed">
+                                The application always operates on the user's own infrastructure (local machine or personal Supabase database). The developers of AutonomousVault accept <strong>NO LIABILITY</strong> for data loss, unauthorized access, key compromise, or any other security breaches under any circumstances.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="space-y-4">
+                <div class="flex items-center gap-2 text-[#E7FE55]">
+                    <h2 class="text-2xl font-light text-white">3. Experimental Protocols & Risks</h2>
+                </div>
+                
+                <div class="space-y-4 text-slate-300">
+                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                        <h3 class="text-white font-medium mb-2 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>
+                            Hyperliquid (Testnet)
+                        </h3>
+                        <p class="text-sm">
+                            Trading on Hyperliquid is currently on <strong>Testnet</strong>. While no real funds are at risk on Testnet, the trading logic is experimental. The AI Agent's performance on Testnet does not guarantee future results on Mainnet.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                        <h3 class="text-white font-medium mb-2 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-purple-400 inline-block"></span>
+                            Polymarket (Prediction Markets)
+                        </h3>
+                        <p class="text-sm">
+                            Prediction markets involve high risk. The AI Agent provides analysis based on available data, but <strong>outcome predictions are never guaranteed</strong>.
+                        </p>
+                        <p class="text-sm mt-2 text-slate-400 italic">
+                            <strong>Regular compliance:</strong> You are solely responsible for ensuring that using prediction markets complies with the laws of your jurisdiction.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="space-y-4">
+                <div class="flex items-center gap-2 text-[#E7FE55]">
+                    <h2 class="text-2xl font-light text-white">4. AI Agent Autonomy</h2>
+                </div>
+                <ul class="list-disc pl-6 space-y-2 text-slate-400">
+                    <li>The AI Agent executes instructions based on your prompts.</li>
+                    <li>It may generate code, execute transactions (Solana), trade perps (Hyperliquid), or interact with prediction markets (Polymarket).</li>
+                    <li><strong>You are the final approver.</strong> While the agent can be autonomous, you are responsible for monitoring its actions.</li>
+                    <li>The developers are not liable for losses caused by AI hallucination, error, or unintended execution.</li>
+                </ul>
+            </section>
+
+            <section class="space-y-4">
+                <div class="flex items-center gap-2 text-[#E7FE55]">
+                    <h2 class="text-2xl font-light text-white">5. Prohibited Activities</h2>
+                </div>
+                <p class="leading-relaxed text-slate-300">
+                    You agree not to use AutonomousVault for:
+                </p>
+                <ul class="list-disc pl-6 space-y-2 text-slate-400">
+                    <li>Money laundering or financing terrorism.</li>
+                    <li>Interacting with sanctioned addresses or entities.</li>
+                    <li>Any illegal activity defined by the laws of your jurisdiction.</li>
+                </ul>
+            </section>
+
+            <div class="pt-10 border-t border-slate-700 flex justify-between items-center mt-12">
+                <p class="text-xs text-slate-500">AutonomousVault v0.1</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

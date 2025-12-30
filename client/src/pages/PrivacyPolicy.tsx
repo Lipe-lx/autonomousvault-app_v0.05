@@ -1,18 +1,36 @@
 import React from 'react';
 import { Database, Lock, EyeOff, ArrowLeft } from 'lucide-react';
 
-export const PrivacyPolicy: React.FC = () => {
+interface PrivacyPolicyProps {
+    onBack?: () => void;
+}
+
+export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
     const handleReturn = () => {
-        window.location.reload(); // Simplest way to return to initial state/auth check
+        if (onBack) {
+            onBack();
+        } else {
+            window.location.reload();
+        }
     };
+
     return (
         <div className="min-h-screen bg-[#0f172a] text-slate-200 p-8 font-sans">
             <div className="max-w-3xl mx-auto space-y-8">
 
                 {/* Header */}
-                <div className="border-b border-slate-700 pb-6 mb-10">
-                    <h1 className="text-4xl font-light text-white mb-2">Privacy Policy</h1>
-                    <p className="text-slate-400">Last Updated: December 23, 2025</p>
+                <div className="border-b border-slate-700 pb-6 mb-10 flex justify-between items-start">
+                    <div>
+                        <h1 className="text-4xl font-light text-white mb-2">Privacy Policy</h1>
+                        <p className="text-slate-400">Last Updated: December 23, 2025</p>
+                    </div>
+                    <button 
+                        onClick={handleReturn}
+                        className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
+                        title="Go Back"
+                    >
+                        <ArrowLeft size={24} />
+                    </button>
                 </div>
 
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-6 mb-8">
@@ -52,12 +70,12 @@ export const PrivacyPolicy: React.FC = () => {
                             <p className="text-xs text-slate-400">Processes user prompts to generate responses. Your keys are NOT sent to the AI.</p>
                         </div>
                         <div className="bg-slate-800 p-4 rounded-lg">
-                            <h3 className="text-white font-medium mb-1">Firebase (Auth)</h3>
-                            <p className="text-xs text-slate-400">Handles email/password and Google login. We only see your User ID.</p>
+                            <h3 className="text-white font-medium mb-1">Supabase (Auth & Database)</h3>
+                            <p className="text-xs text-slate-400">Handles authentication (Email/Google), user settings, and encrypted conversation history (if 24/7 mode is enabled). We only see your User ID and Email.</p>
                         </div>
                         <div className="bg-slate-800 p-4 rounded-lg">
                             <h3 className="text-white font-medium mb-1">RPC Nodes</h3>
-                            <p className="text-xs text-slate-400">Public nodes (Solana, Hyperliquid) receive your signed transactions to execute them on-chain.</p>
+                            <p className="text-xs text-slate-400">Public nodes (Solana, Hyperliquid, Polygon) receive your signed transactions to execute them on-chain.</p>
                         </div>
                     </div>
                 </section>
@@ -72,7 +90,7 @@ export const PrivacyPolicy: React.FC = () => {
                     </p>
                     <ul className="list-disc pl-6 space-y-2 text-slate-400">
                         <li><strong>Access:</strong> All your data is visible within the application.</li>
-                        <li><strong>Deletion:</strong> You can use the "Delete Account" button in Settings to wipe all local data and delete your Firebase authentication record.</li>
+                        <li><strong>Deletion:</strong> You can use the "Delete Account" button in Settings to wipe all local data and delete your Supabase authentication record.</li>
                         <li><strong>Portability:</strong> You can export your private keys at any time via the Backup feature.</li>
                     </ul>
                 </section>
