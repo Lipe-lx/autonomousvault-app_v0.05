@@ -54,7 +54,7 @@ export const SECURITY_TIERS: Record<SecurityTier, SecurityTierInfo> = {
     session: {
         tier: 'session',
         label: 'Session Keys',
-        description: 'Balanced security. 24-hour execution sessions. Re-authenticate daily.',
+        description: 'Balanced security. 24-hour execution sessions on your server.Re-authenticate daily.',
         icon: '⏱️',
         securityLevel: 2,
         execution24x7: false, // Only for session duration
@@ -63,7 +63,7 @@ export const SECURITY_TIERS: Record<SecurityTier, SecurityTierInfo> = {
     persistent: {
         tier: 'persistent',
         label: 'Persistent Keys',
-        description: 'Full automation. 24/7 execution. Lower security - password stored encrypted on server.',
+        description: 'Full automation. 24/7 execution. Lower security - password stored encrypted on your server.',
         icon: '🔓',
         securityLevel: 1,
         execution24x7: true,
