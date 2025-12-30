@@ -150,7 +150,7 @@ class SecurityTierService {
     }
 
     getState(): SecurityTierState {
-        return { ...this.state };
+        return this.state;
     }
 
     getCurrentTier(): SecurityTier {

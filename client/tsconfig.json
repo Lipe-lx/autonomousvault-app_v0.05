@@ -32,6 +32,15 @@
             ],
             "infra/*": [
                 "../infra/*"
+            ],
+            "idb-keyval": [
+                "./node_modules/idb-keyval"
+            ],
+            "@supabase/supabase-js": [
+                "./node_modules/@supabase/supabase-js"
+            ],
+            "*": [
+                "./node_modules/*"
             ]
         },
         "allowImportingTsExtensions": true,
@@ -39,6 +48,9 @@
     },
     "include": [
         "src",
-        "vite.config.ts"
+        "vite.config.ts",
+        "../adapters",
+        "../core",
+        "../infra"
     ]
 }
