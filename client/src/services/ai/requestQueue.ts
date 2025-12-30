@@ -74,6 +74,9 @@ export class AIRequestQueue {
         jitterMs: 1000
     };
 
+    // Rate limit callback for external notification
+    private onRateLimitCallback: ((info: { consecutiveHits: number; blockedForSeconds: number; exhausted: boolean }) => void) | null = null;
+
     private constructor() {
         console.log('[AIRequestQueue] 🚀 Initialized global request queue');
     }
@@ -94,6 +97,14 @@ export class AIRequestQueue {
             this.config = { ...config };
             console.log(`[AIRequestQueue] ⚙️ Config updated for provider: ${provider}`);
         }
+    }
+
+    /**
+     * Set callback for rate limit notifications
+     * Used by dealerService to display feedback in the Live dashboard
+     */
+    setOnRateLimit(callback: ((info: { consecutiveHits: number; blockedForSeconds: number; exhausted: boolean }) => void) | null): void {
+        this.onRateLimitCallback = callback;
     }
 
     /**
@@ -281,6 +292,16 @@ export class AIRequestQueue {
         const totalWait = retryAfterSeconds + Math.ceil(exponentialBuffer / 1000);
 
         console.log(`[AIRequestQueue] 🚫 Rate limited (hit #${this.consecutiveRateLimits}). Blocked for ${totalWait}s`);
+
+        // Notify external listeners about rate limit
+        if (this.onRateLimitCallback) {
+            const exhausted = this.consecutiveRateLimits >= this.config.maxRetries;
+            this.onRateLimitCallback({
+                consecutiveHits: this.consecutiveRateLimits,
+                blockedForSeconds: totalWait,
+                exhausted
+            });
+        }
     }
 
     /**

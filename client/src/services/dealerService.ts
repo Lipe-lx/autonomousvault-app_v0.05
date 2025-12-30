@@ -9,6 +9,7 @@ import { keepAlive } from './keepAlive';
 import { supabaseDealerClient } from './supabaseDealerClient';
 import { securityTierService } from './securityTierService';
 import { aiConfigStore } from '../state/aiConfigStore';
+import { aiRequestQueue } from './ai/requestQueue';
 
 // Timer IDs for background-safe timers
 const DEALER_TIMER_ID = 'hyperliquid-dealer-cycle';
@@ -27,6 +28,37 @@ export class DealerService {
                 this.startLoop();
             } else if (!state.isOn && this.isLoopRunning) {
                 this.stopLoop();
+            }
+        });
+
+        // Register rate limit callback to display feedback in Live dashboard
+        aiRequestQueue.setOnRateLimit((info) => {
+            if (info.exhausted) {
+                // Quota fully exhausted - critical alert
+                dealerStore.addLog('ERROR', 
+                    `🚫 AI API Quota Exhausted! Credits may be depleted. System paused.`,
+                    { consecutiveHits: info.consecutiveHits }
+                );
+                dealerStore.updateStatus(
+                    '🚫 Quota Exhausted',
+                    null,
+                    'Check your AI API credits or billing',
+                    undefined,
+                    `Retried ${info.consecutiveHits}x without success`
+                );
+            } else {
+                // Show warning from first rate limit
+                dealerStore.addLog('WARNING', 
+                    `⚠️ AI Rate Limited! Waiting ${info.blockedForSeconds}s before retry... (attempt ${info.consecutiveHits})`,
+                    { consecutiveHits: info.consecutiveHits }
+                );
+                dealerStore.updateStatus(
+                    '⚠️ Rate Limited',
+                    null,
+                    `AI credits/quota may be running low`,
+                    undefined,
+                    `Retry in ${info.blockedForSeconds}s (attempt ${info.consecutiveHits})`
+                );
             }
         });
     }
@@ -215,10 +247,36 @@ export class DealerService {
                     intervalMs: state.settings.checkIntervalSeconds * 1000,
                     maxPositions: state.settings.maxOpenPositions,
                     maxLeverage: state.settings.maxLeverage,
-                    slPercent: state.settings.stopLossPercent ?? undefined,
-                    tpPercent: state.settings.takeProfitPercent ?? undefined,
+                    maxPositionSizeUSDC: state.settings.maxPositionSizeUSDC,
+                    // Timeframe settings (matching Local mode)
+                    analysisTimeframe: state.settings.analysisTimeframe || '60',
+                    historyCandles: state.settings.historyCandles || 100,
+                    // Macro Timeframe
+                    macroTimeframeEnabled: state.settings.macroTimeframeEnabled,
+                    macroTimeframe: state.settings.macroTimeframe,
+                    macroEnabledIndicators: state.settings.macroEnabledIndicators,
+                    // Indicators
                     indicatorSettings: state.settings.indicatorSettings,
+                    autonomousIndicators: state.settings.autonomousIndicators,
+                    // Risk Management
+                    stopLossEnabled: state.settings.stopLossEnabled,
+                    stopLossPercent: state.settings.stopLossPercent,
+                    takeProfitEnabled: state.settings.takeProfitEnabled,
+                    takeProfitPercent: state.settings.takeProfitPercent,
+                    // Strategy
                     strategyPrompt: state.settings.strategyPrompt
+                },
+                // Portfolio context for position-aware decisions
+                portfolioContext: {
+                    balance: this.vaultContext?.balance || 0,
+                    positions: (this.vaultContext?.positions || []).map((p: any) => ({
+                        coin: p.position?.coin || p.coin,
+                        side: parseFloat(p.position?.szi || p.szi || '0') > 0 ? 'LONG' : 'SHORT',
+                        size: Math.abs(parseFloat(p.position?.szi || p.szi || '0')),
+                        entryPrice: parseFloat(p.position?.entryPx || p.entryPx || '0'),
+                        unrealizedPnl: parseFloat(p.position?.unrealizedPnl || p.unrealizedPnl || '0'),
+                        leverage: parseFloat(p.position?.leverage?.value || p.leverage?.value || '1')
+                    }))
                 },
                 aiConfig: aiConfig,
                 executeTradesIfSignal: true

@@ -15,16 +15,46 @@ export interface DealerCycleParams {
         intervalMs: number;
         maxPositions: number;
         maxLeverage: number;
+        maxPositionSizeUSDC?: number;
+        // Timeframe settings
+        analysisTimeframe?: string;
+        historyCandles?: number;
+        // Macro Timeframe (multi-TF analysis)
+        macroTimeframeEnabled?: boolean;
+        macroTimeframe?: string;
+        macroEnabledIndicators?: string[];
+        // Indicators
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        indicatorSettings?: Record<string, any>;
+        autonomousIndicators?: boolean;
+        // Risk Management
+        stopLossEnabled?: boolean;
+        stopLossPercent?: number;
+        takeProfitEnabled?: boolean;
+        takeProfitPercent?: number;
+        // Strategy
+        strategyPrompt?: string;
+        // Legacy aliases (for backwards compatibility)
         slPercent?: number;
         tpPercent?: number;
-        indicatorSettings?: any;
-        strategyPrompt?: string;
     };
     aiConfig: {
         provider: 'gemini' | 'openai' | 'claude';
         apiKey: string;
         modelId: string;
         systemPrompt?: string;
+    };
+    // Portfolio context for position-aware decisions
+    portfolioContext?: {
+        balance: number;
+        positions: Array<{
+            coin: string;
+            side: 'LONG' | 'SHORT';
+            size: number;
+            entryPrice: number;
+            unrealizedPnl: number;
+            leverage: number;
+        }>;
     };
     executeTradesIfSignal: boolean;
 }
