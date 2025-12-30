@@ -1,8 +1,10 @@
 // Supabase Dealer Client
 // Frontend service for invoking Supabase Edge Functions
 // Used for Tier B (Session) and Tier C (Persistent) execution modes
+// NOTE: Uses user's personal Supabase (userDataSupabase), not Auth Supabase
 
-import { getSupabaseClient } from './supabase/client';
+import { userDataSupabase } from './supabase/userDataSupabase';
+import { StorageService } from './storageService';
 
 /**
  * Dealer cycle parameters
@@ -69,7 +71,12 @@ export interface ScheduleConfig {
  * Invokes Edge Functions for Tier B/C execution modes
  */
 class SupabaseDealerClient {
-    private supabase = getSupabaseClient();
+    /**
+     * Get the current Supabase client (user's personal Supabase)
+     */
+    private get supabase() {
+        return userDataSupabase.getClient();
+    }
 
     /**
      * Check if Supabase is available
@@ -145,15 +152,15 @@ class SupabaseDealerClient {
             throw new Error('Supabase not connected');
         }
 
-        const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) {
+        const userId = StorageService.getUserId();
+        if (!userId) {
             return { success: false, error: 'Not authenticated' };
         }
 
         const { error } = await this.supabase
             .from('cron_schedules')
             .upsert({
-                user_id: user.id,
+                user_id: userId,
                 schedule_name: 'default',
                 enabled: config.enabled,
                 interval_seconds: config.intervalSeconds,
@@ -196,13 +203,13 @@ class SupabaseDealerClient {
     } | null> {
         if (!this.supabase) return null;
 
-        const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) return null;
+        const userId = StorageService.getUserId();
+        if (!userId) return null;
 
         const { data, error } = await this.supabase
             .from('cron_schedules')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .eq('schedule_name', 'default')
             .single();
 
@@ -231,8 +238,8 @@ class SupabaseDealerClient {
             return { hasActiveSession: false, tier: 'local' };
         }
 
-        const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) {
+        const userId = StorageService.getUserId();
+        if (!userId) {
             return { hasActiveSession: false, tier: 'local' };
         }
 
@@ -240,7 +247,7 @@ class SupabaseDealerClient {
         const { data: keyData } = await this.supabase
             .from('encrypted_keys')
             .select('encrypted_password')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .eq('key_name', 'hyperliquid')
             .single();
 
@@ -252,7 +259,7 @@ class SupabaseDealerClient {
         const { data: sessionData } = await this.supabase
             .from('execution_sessions')
             .select('expires_at')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .eq('revoked', false)
             .gt('expires_at', new Date().toISOString())
             .order('expires_at', { ascending: false })
@@ -281,8 +288,8 @@ class SupabaseDealerClient {
     } | null> {
         if (!this.supabase) return null;
 
-        const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) return null;
+        const userId = StorageService.getUserId();
+        if (!userId) return null;
 
         // Get current period start (first of month)
         const now = new Date();
@@ -291,7 +298,7 @@ class SupabaseDealerClient {
         const { data, error } = await this.supabase
             .from('usage_tracking')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .eq('period_start', periodStart.toISOString().split('T')[0])
             .single();
 
@@ -304,7 +311,7 @@ class SupabaseDealerClient {
         const { data: planData } = await this.supabase
             .from('user_plans')
             .select('cycles_limit')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .single();
 
         const cyclesLimit = planData?.cycles_limit || 1000; // Default limit
