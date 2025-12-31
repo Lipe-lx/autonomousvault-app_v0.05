@@ -256,3 +256,30 @@ export interface LPMarketContext {
     totalTVL: number;
     totalVolume24h: number;
 }
+
+// ============================================
+// VOLATILITY TYPES
+// ============================================
+
+export interface VolatilityMetrics {
+    poolAddress: string;
+    poolName?: string;
+    currentPrice: number;
+    volatilityDaily: number;      // Daily volatility (%)
+    volatilityAnnualized: number; // Annualized volatility (%)
+    priceChange24h: number;       // 24h price change (%)
+    priceChange7d: number;        // 7d price change (%)
+    dataPoints: number;           // Number of snapshots used
+    confidence: 'low' | 'medium' | 'high';
+    error?: string;
+}
+
+export interface VolatilityBasedRange {
+    strategy: 'conservative' | 'moderate' | 'aggressive';
+    priceMin: number;
+    priceMax: number;
+    widthPercent: number;
+    sigmaMultiple: number;
+    estimatedTimeInRange: string;
+    description: string;
+}

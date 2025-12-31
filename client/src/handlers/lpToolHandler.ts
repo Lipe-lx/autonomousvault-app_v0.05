@@ -4,6 +4,7 @@
 import { liquidityPoolMCP } from '../mcp/solana/liquidityPoolMCP';
 import { meteoraService } from '../services/meteoraService';
 import { raydiumService } from '../services/raydiumService';
+import { volatilityService } from '../services/volatilityService';
 import { meteoraMCP } from '../mcp/meteora/meteoraMCP';
 import { raydiumMCP } from '../mcp/raydium/raydiumMCP';
 import {
@@ -484,6 +485,91 @@ Tighter ranges = higher capital efficiency, more active management needed`
     }
 
     // =============================================
+    // VOLATILITY & RANGE SUGGESTIONS
+    // =============================================
+
+    if (name === 'getPoolVolatility') {
+        try {
+            setAiStatus('Calculating pool volatility...');
+            
+            const days = args.days || 7;
+            const volatility = await volatilityService.calculateVolatility(args.poolAddress, days);
+
+            if (volatility.error) {
+                return { type: 'error', title: 'Volatility Error', details: volatility.error };
+            }
+
+            const confidenceEmoji = {
+                'high': '🟢',
+                'medium': '🟡',
+                'low': '🔴'
+            }[volatility.confidence];
+
+            return {
+                type: 'success',
+                title: 'Pool Volatility',
+                details: `📊 **Volatility Analysis**
+- Pool: ${args.poolAddress.slice(0, 8)}...
+- Current Price: $${volatility.currentPrice.toFixed(4)}
+
+**Volatility:**
+- Daily: ${volatility.volatilityDaily.toFixed(2)}%
+- Annualized: ${volatility.volatilityAnnualized.toFixed(2)}%
+
+**Price Changes:**
+- 24h: ${volatility.priceChange24h >= 0 ? '+' : ''}${volatility.priceChange24h.toFixed(2)}%
+- 7d: ${volatility.priceChange7d >= 0 ? '+' : ''}${volatility.priceChange7d.toFixed(2)}%
+
+${confidenceEmoji} Confidence: ${volatility.confidence.toUpperCase()} (${volatility.dataPoints} data points)`
+            };
+        } catch (err: any) {
+            return { type: 'error', title: 'Volatility Error', details: err.message };
+        }
+    }
+
+    if (name === 'suggestOptimalRangeByVolatility') {
+        try {
+            setAiStatus('Calculating optimal ranges...');
+            
+            // First get volatility
+            const volatility = await volatilityService.calculateVolatility(args.poolAddress, args.days || 7);
+            
+            if (!volatility.currentPrice || volatility.currentPrice === 0) {
+                return { type: 'error', title: 'Range Error', details: 'Could not get current price for pool.' };
+            }
+
+            // Get range suggestions
+            const ranges = volatilityService.suggestOptimalRanges(volatility.currentPrice, volatility);
+
+            const strategyEmoji = {
+                'conservative': '🟢',
+                'moderate': '🟡',
+                'aggressive': '🔴'
+            };
+
+            let details = `📐 **Optimal Range Suggestions**\n`;
+            details += `Current Price: $${volatility.currentPrice.toFixed(4)}\n`;
+            details += `Daily Volatility: ${volatility.volatilityDaily.toFixed(2)}%\n\n`;
+
+            ranges.forEach(range => {
+                const emoji = strategyEmoji[range.strategy];
+                details += `${emoji} **${range.strategy.toUpperCase()} (±${range.sigmaMultiple}σ)**\n`;
+                details += `   Range: $${range.priceMin.toFixed(4)} - $${range.priceMax.toFixed(4)}\n`;
+                details += `   Width: ${range.widthPercent.toFixed(1)}%\n`;
+                details += `   ${range.estimatedTimeInRange}\n\n`;
+            });
+
+            if (volatility.confidence === 'low') {
+                details += `\n⚠️ *Low confidence: ranges based on estimated volatility due to insufficient historical data.*`;
+            }
+
+            return { type: 'success', title: 'Range Suggestions', details };
+        } catch (err: any) {
+            return { type: 'error', title: 'Range Error', details: err.message };
+        }
+    }
+
+    // =============================================
     // POOL CREATION
     // =============================================
 
@@ -550,7 +636,10 @@ export function isLPTool(name: string): boolean {
         'calculateOptimalPriceRange',
         'getLPSwapQuote',
         'createLiquidityPool',
-        'estimatePoolCreationCost'
+        'estimatePoolCreationCost',
+        // Volatility tools
+        'getPoolVolatility',
+        'suggestOptimalRangeByVolatility'
     ];
     return lpToolNames.includes(name);
 }

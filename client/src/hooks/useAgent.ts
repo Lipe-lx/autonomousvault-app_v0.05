@@ -612,6 +612,8 @@ ${recentFills.map((f: any) => {
           - "impermanent loss", "perda impermanente", "IL" → estimateImpermanentLoss
           - "simular", "simulate", "quanto recebo", "how much" → simulateAddLiquidity
           - "comparar", "compare", "qual melhor" → compareLiquidityPools
+          - "volatilidade", "volatility", "volátil", "volatile" → getPoolVolatility
+          - "faixa ideal", "optimal range", "sugerir faixa", "suggest range", "faixa otimizada" → suggestOptimalRangeByVolatility
           
           **AVAILABLE LP TOOLS - USE THEM!:**
           - 'searchLiquidityPools' - Search pools by token pair, TVL, volume, APY, protocol
@@ -625,6 +627,8 @@ ${recentFills.map((f: any) => {
           - 'estimateImpermanentLoss' - Calculate potential IL for price change
           - 'calculateOptimalPriceRange' - Suggest price range for concentrated liquidity
           - 'getLPSwapQuote' - Get swap quote via LP
+          - 'getPoolVolatility' - Calculate historical volatility (daily/annualized) for a pool
+          - 'suggestOptimalRangeByVolatility' - Suggest price ranges based on volatility (conservative/moderate/aggressive)
           
           **EXAMPLES - EXEMPLOS (When user says → Call this tool):**
           - "pools com maior volume" / "top pools by volume" → getTopLiquidityPools(criteria='volume')
@@ -638,6 +642,8 @@ ${recentFills.map((f: any) => {
           - "simule impermanent loss" / "estimate IL" → estimateImpermanentLoss(priceChangePercent=20)
           - "pools com APY maior que 50%" → searchLiquidityPools(minAPY=50)
           - "top 10 pools por TVL" → getTopLiquidityPools(criteria='tvl', limit=10)
+          - "qual a volatilidade do pool X?" / "pool volatility" → getPoolVolatility(poolAddress='X')
+          - "sugira faixa para esse pool" / "optimal range" → suggestOptimalRangeByVolatility(poolAddress='X')
           
           **LP BEHAVIOR RULES:**
           1. If user mentions "pools", "LP", "liquidez", "liquidity" → USE LP TOOLS, NOT just text!
@@ -646,6 +652,7 @@ ${recentFills.map((f: any) => {
           4. Show results in table format when listing multiple pools
           5. ALWAYS mention we are on SOLANA DEVNET (not mainnet)
           6. If user asks about "melhores pools" without criteria → ask "By volume, APY, or TVL?"
+          7. When user asks about volatility or optimal range, use the volatility tools!
           
           **CRITICAL - DO NOT SAY "I can't do LP operations"!**
           You HAVE the tools listed above. USE THEM when user asks about pools/LP/liquidity!
