@@ -36,11 +36,11 @@ serve(async (req) => {
     const meteoraPools = meteoraData.groups?.flatMap((g: any) => g.pairs) || [];
     console.log(`Fetched ${meteoraPools.length} Meteora pools`);
 
-    // 2. Fetch Raydium Pools (Top 50)
+    // 2. Fetch Raydium Pools (Top 100)
     console.log("Fetching Raydium...");
-    const raydiumResp = await fetch(`${RAYDIUM_API}/pools/info/list?poolType=all&poolSortField=default&sortType=desc&pageSize=50&page=1`);
+    const raydiumResp = await fetch(`${RAYDIUM_API}/pools/info/list?poolType=all&poolSortField=default&sortType=desc&pageSize=100&page=1`);
     const raydiumData = await raydiumResp.json();
-    const raydiumPools = raydiumData.data?.data || [];
+    const raydiumPools = raydiumData.data?.data || raydiumData.data || [];
     console.log(`Fetched ${raydiumPools.length} Raydium pools`);
 
     const allPools = [
@@ -62,11 +62,11 @@ serve(async (req) => {
         name: p.poolName || `${p.mintA?.symbol || 'Unknown'}-${p.mintB?.symbol || 'Unknown'}`,
         token_a_mint: p.mintA?.address,
         token_b_mint: p.mintB?.address,
-        tvl: p.tvl || 0,
-        volume_cumulative: 0, // Raydium doesn't provide cumulative
-        volume_24h: p.day?.volume || p.volume24h || 0,
-        apy: (p.day?.apr || p.apr24h || 0) * 100, // Convert to percentage if needed
-        price: p.price || p.lpPrice || (p.mintA?.price ? p.mintB?.price / p.mintA?.price : 0) || 0
+        tvl: parseFloat(p.tvl) || 0,
+        volume_cumulative: 0, 
+        volume_24h: parseFloat(p.day?.volume || p.volume24h || 0),
+        apy: parseFloat(p.day?.apr || p.apr24h || 0),
+        price: parseFloat(p.price || p.lpPrice || (p.mintA?.price && p.mintB?.price ? p.mintA?.price / p.mintB?.price : 0) || 0)
       }))
     ];
 

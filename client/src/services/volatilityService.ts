@@ -259,7 +259,7 @@ class VolatilityService {
     async searchPoolsByTokenPair(
         tokenA: string,
         tokenB: string,
-        limit: number = 10
+        limit: number = 20
     ): Promise<{ address: string; name: string; protocol: string; tvl: number }[]> {
         const supabase = getSupabaseClient();
         if (!supabase) {
@@ -269,21 +269,19 @@ class VolatilityService {
 
         try {
             // Search by pool name containing both tokens (case insensitive)
-            const searchPattern1 = `%${tokenA}%${tokenB}%`;
-            const searchPattern2 = `%${tokenB}%${tokenA}%`;
-            
+            // Using multiple patterns to catch "SOL-USDC", "USDC/SOL", "SOL/USDC", etc.
             const { data: pools, error } = await supabase
                 .from('liquidity_pools')
                 .select(`
                     address,
                     name,
                     protocol,
-                    liquidity_pool_snapshots!inner (
+                    liquidity_pool_snapshots (
                         tvl,
                         timestamp
                     )
                 `)
-                .or(`name.ilike.${searchPattern1},name.ilike.${searchPattern2}`)
+                .or(`name.ilike.%${tokenA}%${tokenB}%,name.ilike.%${tokenB}%${tokenA}%`)
                 .order('timestamp', { foreignTable: 'liquidity_pool_snapshots', ascending: false })
                 .limit(1, { foreignTable: 'liquidity_pool_snapshots' });
 
@@ -292,8 +290,21 @@ class VolatilityService {
                 return [];
             }
 
+            // Filter out pools that don't actually contain both tokens in the name logic
+            // (ilike %SOL%USDC% might catch "SOLAR-USDC")
+            const filteredPools = (pools || []).filter(p => {
+                const name = p.name.toUpperCase();
+                const partA = tokenA.toUpperCase();
+                const partB = tokenB.toUpperCase();
+                
+                // Check if tokens are distinct parts of the name
+                const regexA = new RegExp(`(^|[^A-Z])${partA}([^A-Z]|$)`);
+                const regexB = new RegExp(`(^|[^A-Z])${partB}([^A-Z]|$)`);
+                return regexA.test(name) && regexB.test(name);
+            });
+
             // Map and sort by TVL
-            const result = (pools || []).map((p: any) => ({
+            const result = filteredPools.map((p: any) => ({
                 address: p.address,
                 name: p.name,
                 protocol: p.protocol,
