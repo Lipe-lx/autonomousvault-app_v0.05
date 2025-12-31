@@ -8,7 +8,8 @@ import {
     Zap,
     Plus,
     Coins,
-    TrendingUp
+    TrendingUp,
+    Droplets
 } from 'lucide-react';
 import { AppTab } from '../../types';
 import { hyperliquidService } from '../../services/hyperliquidService';
@@ -117,6 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     const isDealerActive = [AppTab.VAULT_DEALER, AppTab.DEALER_DASHBOARD, AppTab.DEALER_THINKING, AppTab.DEALER_CONFIG, AppTab.DEALER_PROMPT].includes(activeTab);
     const isPolymarketDealerActive = [AppTab.POLYMARKET_DEALER, AppTab.POLYMARKET_DASHBOARD, AppTab.POLYMARKET_THINKING, AppTab.POLYMARKET_CONFIG, AppTab.POLYMARKET_PROMPT].includes(activeTab);
+    const isSolanaDealerActive = [AppTab.SOLANA_DEALER, AppTab.SOLANA_DEALER_DASHBOARD, AppTab.SOLANA_DEALER_THINKING, AppTab.SOLANA_DEALER_POLICY, AppTab.SOLANA_DEALER_LOG].includes(activeTab);
     const isManagerActive = activeTab === AppTab.AGENT;
 
     return (
@@ -215,6 +217,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 <Zap size={18} />
                             </span>
                             <span className="tracking-wide">Hyperliquid Dealer</span>
+                        </button>
+                    </div>
+
+                    {/* Solana Dealer (LP Operations) */}
+                    <div>
+                        <button
+                            onClick={() => handleNavigation(AppTab.SOLANA_DEALER)}
+                            className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
+                                isSolanaDealerActive
+                                    ? "text-white bg-[#1a1b21]/80 backdrop-blur-sm"
+                                    : "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40"
+                            )}
+                            title="Solana Dealer"
+                        >
+                            {/* Active indicator bar */}
+                            {isSolanaDealerActive && (
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#E7FE55] rounded-full" />
+                            )}
+                            <span className={cn(
+                                "transition-colors ml-1",
+                                isSolanaDealerActive && "text-[#E7FE55]"
+                            )}>
+                                <Droplets size={18} />
+                            </span>
+                            <span className="tracking-wide">Solana Dealer</span>
                         </button>
                     </div>
 

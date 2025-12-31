@@ -5,6 +5,8 @@ import { liquidityPoolMCP } from '../mcp/solana/liquidityPoolMCP';
 import { meteoraService } from '../services/meteoraService';
 import { raydiumService } from '../services/raydiumService';
 import { volatilityService } from '../services/volatilityService';
+import { lpPolicyService } from '../services/lpPolicyService';
+import { solanaDealerStore } from '../state/solanaDealerStore';
 import { meteoraMCP } from '../mcp/meteora/meteoraMCP';
 import { raydiumMCP } from '../mcp/raydium/raydiumMCP';
 import {
@@ -12,12 +14,28 @@ import {
     PoolQueryFilters,
     TimeFrame
 } from '../types/solanaLiquidityTypes';
+import { LPOperationScope, SemanticType, LPAuditEntry } from '../types/solanaLPTypes';
+
+// Semantic types for visual differentiation
+export type { SemanticType } from '../types/solanaLPTypes';
 
 export interface ToolResult {
     type: 'success' | 'error' | 'info';
+    semanticType?: SemanticType; // 'analysis' | 'decision' | 'execution'
     title: string;
     details: string;
+    rationale?: string;
     tx?: string;
+    // For confirmation flow
+    requiresConfirmation?: boolean;
+    confirmationData?: {
+        scope: LPOperationScope;
+        action: string;
+        poolAddress?: string;
+        poolName?: string;
+        params: Record<string, any>;
+        rationale: string;
+    };
 }
 
 /**
@@ -79,9 +97,12 @@ export async function handleLPToolCall(
                 details += `| ${pool.name} | ${protocol} | $${pool.tvl.toLocaleString()} | $${(pool.volume['24h'] || 0).toLocaleString()} | ${(pool.apy || 0).toFixed(2)}% |\n`;
             });
 
-            return { type: 'success', title: 'Liquidity Pools', details };
+            // Log to audit
+            solanaDealerStore.addLog('INFO', `Searched pools: ${pools.length} results`, { filters });
+
+            return { type: 'success', semanticType: 'analysis', title: 'Liquidity Pools', details };
         } catch (err: any) {
-            return { type: 'error', title: 'Search Error', details: err.message };
+            return { type: 'error', semanticType: 'analysis', title: 'Search Error', details: err.message };
         }
     }
 
@@ -324,45 +345,186 @@ ${position.priceRange ? `- Price Range: ${position.priceRange.min.toFixed(4)} - 
     // =============================================
 
     if (name === 'addLiquidity') {
+        // Get policy for validation
+        const policy = solanaDealerStore.getPolicy();
+        
+        // Validate against policy
+        const validation = lpPolicyService.validateOperation(
+            'OPEN_POSITION',
+            {
+                poolAddress: args.poolAddress,
+                rangeWidthPercent: args.priceMin && args.priceMax && args.currentPrice 
+                    ? ((args.priceMax - args.priceMin) / args.currentPrice) * 100 
+                    : undefined
+            },
+            policy
+        );
+
+        if (!validation.allowed) {
+            // Log policy violation
+            solanaDealerStore.addAuditEntry({
+                scope: 'OPEN_POSITION',
+                action: 'Add liquidity blocked by policy',
+                poolAddress: args.poolAddress,
+                rationale: 'Policy violation detected',
+                params: { amountA: args.amountA, amountB: args.amountB },
+                status: 'rejected',
+                policyViolations: validation.violations
+            });
+
+            return {
+                type: 'error',
+                semanticType: 'decision',
+                title: 'Policy Violation',
+                details: `❌ **Operação bloqueada pela Policy Engine**\n\n${validation.violations.map(v => '• ' + v).join('\n')}\n\nAjuste suas políticas em Solana Dealer > Policy para prosseguir.`
+            };
+        }
+
+        // Check if confirmation is required
+        const requiresConfirmation = lpPolicyService.requiresConfirmation('OPEN_POSITION', policy);
+        const rationale = `Adição de liquidez na pool ${args.poolAddress?.slice(0, 8) || 'unknown'}. Valores: ${args.amountA} token A + ${args.amountB} token B.`;
+        
+        if (requiresConfirmation) {
+            // Log pending confirmation
+            solanaDealerStore.addAuditEntry({
+                scope: 'OPEN_POSITION',
+                action: 'Add liquidity - awaiting confirmation',
+                poolAddress: args.poolAddress,
+                rationale,
+                params: { amountA: args.amountA, amountB: args.amountB, priceMin: args.priceMin, priceMax: args.priceMax },
+                status: 'pending'
+            });
+
+            return {
+                type: 'info',
+                semanticType: 'decision',
+                title: 'Confirm Add Liquidity',
+                details: `Adicionando liquidez à pool ${args.poolAddress?.slice(0, 8) || 'unknown'}:\n- Amount A: ${args.amountA}\n- Amount B: ${args.amountB}\n${args.priceMin ? `- Range: ${args.priceMin} - ${args.priceMax}` : ''}`,
+                rationale,
+                requiresConfirmation: true,
+                confirmationData: {
+                    scope: 'OPEN_POSITION',
+                    action: 'Add Liquidity',
+                    poolAddress: args.poolAddress,
+                    params: { amountA: args.amountA, amountB: args.amountB, priceMin: args.priceMin, priceMax: args.priceMax },
+                    rationale
+                }
+            };
+        }
+
+        // No confirmation needed - log and return
+        solanaDealerStore.addLog('OPERATION', `Add liquidity to ${args.poolAddress?.slice(0, 8)}`, args);
+
         return {
             type: 'info',
+            semanticType: 'execution',
             title: 'Add Liquidity',
-            details: `To add liquidity to pool ${args.poolAddress?.slice(0, 8) || 'unknown'}...:
-- Amount A: ${args.amountA}
-- Amount B: ${args.amountB}
-${args.priceMin ? `- Price Range: ${args.priceMin} - ${args.priceMax}` : ''}
-
-⚠️ SDK integration required. Please use the protocol's web interface for now.`
+            details: `To add liquidity to pool ${args.poolAddress?.slice(0, 8) || 'unknown'}...:\n- Amount A: ${args.amountA}\n- Amount B: ${args.amountB}\n${args.priceMin ? `- Price Range: ${args.priceMin} - ${args.priceMax}` : ''}\n\n⚠️ SDK integration required. Please use the protocol's web interface for now.`,
+            rationale
         };
     }
 
     if (name === 'removeLiquidity') {
+        const policy = solanaDealerStore.getPolicy();
+        const requiresConfirmation = lpPolicyService.requiresConfirmation('CLOSE_POSITION', policy);
+        const rationale = `Remoção de ${args.percentage}% da posição ${args.positionAddress?.slice(0, 8) || 'unknown'}.`;
+
+        // Log to audit
+        solanaDealerStore.addAuditEntry({
+            scope: 'CLOSE_POSITION',
+            action: `Remove ${args.percentage}% liquidity`,
+            poolAddress: args.positionAddress,
+            rationale,
+            params: { percentage: args.percentage },
+            status: requiresConfirmation ? 'pending' : 'executed'
+        });
+
+        if (requiresConfirmation) {
+            return {
+                type: 'info',
+                semanticType: 'decision',
+                title: 'Confirm Remove Liquidity',
+                details: `Removendo ${args.percentage}% da posição ${args.positionAddress?.slice(0, 8) || 'unknown'}`,
+                rationale,
+                requiresConfirmation: true,
+                confirmationData: {
+                    scope: 'CLOSE_POSITION',
+                    action: 'Remove Liquidity',
+                    poolAddress: args.positionAddress,
+                    params: { percentage: args.percentage },
+                    rationale
+                }
+            };
+        }
+
         return {
             type: 'info',
+            semanticType: 'execution',
             title: 'Remove Liquidity',
-            details: `To remove ${args.percentage}% from position ${args.positionAddress?.slice(0, 8) || 'unknown'}...
-
-⚠️ SDK integration required. Please use the protocol's web interface for now.`
+            details: `To remove ${args.percentage}% from position ${args.positionAddress?.slice(0, 8) || 'unknown'}...\n\n⚠️ SDK integration required. Please use the protocol's web interface for now.`,
+            rationale
         };
     }
 
     if (name === 'claimLPFees' || name === 'claimLPRewards') {
+        const rationale = `Claim de fees/rewards da posição ${args.positionAddress?.slice(0, 8) || 'unknown'}.`;
+        
+        solanaDealerStore.addAuditEntry({
+            scope: 'CLAIM_FEES',
+            action: 'Claim fees/rewards',
+            poolAddress: args.positionAddress,
+            rationale,
+            params: {},
+            status: 'executed'
+        });
+
         return {
             type: 'info',
+            semanticType: 'execution',
             title: 'Claim Fees/Rewards',
-            details: `To claim from position ${args.positionAddress?.slice(0, 8) || 'unknown'}...
-
-⚠️ SDK integration required. Please use the protocol's web interface for now.`
+            details: `To claim from position ${args.positionAddress?.slice(0, 8) || 'unknown'}...\n\n⚠️ SDK integration required. Please use the protocol's web interface for now.`,
+            rationale
         };
     }
 
     if (name === 'rebalanceLPPosition') {
+        const policy = solanaDealerStore.getPolicy();
+        const requiresConfirmation = lpPolicyService.requiresConfirmation('REBALANCE_RANGE', policy);
+        const rationale = `Rebalanceamento para novo range: ${args.newPriceMin} - ${args.newPriceMax}.`;
+
+        solanaDealerStore.addAuditEntry({
+            scope: 'REBALANCE_RANGE',
+            action: 'Rebalance to new range',
+            poolAddress: args.positionAddress,
+            rationale,
+            params: { newPriceMin: args.newPriceMin, newPriceMax: args.newPriceMax },
+            status: requiresConfirmation ? 'pending' : 'executed'
+        });
+
+        if (requiresConfirmation) {
+            return {
+                type: 'info',
+                semanticType: 'decision',
+                title: 'Confirm Rebalance',
+                details: `Rebalanceando posição para range ${args.newPriceMin} - ${args.newPriceMax}`,
+                rationale,
+                requiresConfirmation: true,
+                confirmationData: {
+                    scope: 'REBALANCE_RANGE',
+                    action: 'Rebalance Position',
+                    poolAddress: args.positionAddress,
+                    params: { newPriceMin: args.newPriceMin, newPriceMax: args.newPriceMax },
+                    rationale
+                }
+            };
+        }
+
         return {
             type: 'info',
+            semanticType: 'execution',
             title: 'Rebalance Position',
-            details: `To rebalance position to range ${args.newPriceMin} - ${args.newPriceMax}:
-
-⚠️ SDK integration required. Please use the protocol's web interface for now.`
+            details: `To rebalance position to range ${args.newPriceMin} - ${args.newPriceMax}:\n\n⚠️ SDK integration required. Please use the protocol's web interface for now.`,
+            rationale
         };
     }
 
@@ -637,9 +799,32 @@ ${confidenceEmoji} Confidence: ${volatility.confidence.toUpperCase()} (${volatil
                 details += `\n⚠️ *Low confidence: ranges based on estimated volatility due to insufficient historical data.*`;
             }
 
-            return { type: 'success', title: 'Range Suggestions', details };
+            // Generate rationale for the moderate strategy (most common choice)
+            const moderateRange = ranges.find(r => r.strategy === 'moderate');
+            const rationale = moderateRange 
+                ? lpPolicyService.generateRangeRationale(
+                    'moderate',
+                    volatility,
+                    { tvl: undefined, volume24h: undefined }
+                )
+                : 'Sugestão de range baseada na volatilidade calculada.';
+
+            // Log to audit
+            solanaDealerStore.addLog('INFO', `Range suggestion for ${poolDisplay}`, { 
+                strategy: 'all', 
+                volatilityDaily: volatility.volatilityDaily,
+                currentPrice: volatility.currentPrice
+            });
+
+            return { 
+                type: 'success', 
+                semanticType: 'decision',
+                title: 'Range Suggestions', 
+                details,
+                rationale
+            };
         } catch (err: any) {
-            return { type: 'error', title: 'Range Error', details: err.message };
+            return { type: 'error', semanticType: 'analysis', title: 'Range Error', details: err.message };
         }
     }
 

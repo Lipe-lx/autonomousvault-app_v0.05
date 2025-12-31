@@ -19,6 +19,12 @@ export enum AppTab {
     POLYMARKET_THINKING = 'polymarket_thinking',
     POLYMARKET_CONFIG = 'polymarket_config',
     POLYMARKET_PROMPT = 'polymarket_prompt',
+    // Solana Dealer tabs (LP Operations)
+    SOLANA_DEALER = 'solana_dealer',
+    SOLANA_DEALER_DASHBOARD = 'solana_dealer_dashboard',
+    SOLANA_DEALER_THINKING = 'solana_dealer_thinking',
+    SOLANA_DEALER_POLICY = 'solana_dealer_policy',
+    SOLANA_DEALER_LOG = 'solana_dealer_log',
     // Legal
     PRIVACY = 'privacy',
     TERMS = 'terms'

@@ -26,6 +26,7 @@ import { TokenCostsPage } from './components/admin/TokenCostsPage';
 
 // Polymarket Components
 import { PolymarketWrapper } from './components/polymarket/PolymarketWrapper';
+import { SolanaDealerConsole } from './components/solanaDealer/SolanaDealerConsole';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfUse } from './pages/TermsOfUse';
 import { ConsentModal } from './components/legal/ConsentModal';
@@ -258,7 +259,7 @@ export default function App() {
             {/* Main Content */}
             {/* Main Content */}
             {/* Main Content */}
-            <main ref={mainRef} className={`flex-1 ml-0 xl:ml-[264px] h-full flex flex-col relative transition-all duration-300 ${[AppTab.VAULT_DEALER, AppTab.DEALER_DASHBOARD, AppTab.DEALER_THINKING, AppTab.DEALER_CONFIG, AppTab.DEALER_PROMPT, AppTab.POLYMARKET_DEALER, AppTab.POLYMARKET_DASHBOARD, AppTab.POLYMARKET_THINKING, AppTab.POLYMARKET_CONFIG, AppTab.POLYMARKET_PROMPT].includes(activeTab) ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+            <main ref={mainRef} className={`flex-1 ml-0 xl:ml-[264px] h-full flex flex-col relative transition-all duration-300 ${[AppTab.VAULT_DEALER, AppTab.DEALER_DASHBOARD, AppTab.DEALER_THINKING, AppTab.DEALER_CONFIG, AppTab.DEALER_PROMPT, AppTab.POLYMARKET_DEALER, AppTab.POLYMARKET_DASHBOARD, AppTab.POLYMARKET_THINKING, AppTab.POLYMARKET_CONFIG, AppTab.POLYMARKET_PROMPT, AppTab.SOLANA_DEALER, AppTab.SOLANA_DEALER_DASHBOARD, AppTab.SOLANA_DEALER_THINKING, AppTab.SOLANA_DEALER_POLICY, AppTab.SOLANA_DEALER_LOG].includes(activeTab) ? 'overflow-hidden' : 'overflow-y-auto'}`}>
                 {/* Vault Operator Header - Outside padded container for full-width */}
                 {activeTab === AppTab.AGENT && (
                     <header className="flex justify-between items-center mb-0 sticky top-0 z-40 bg-[#0f1015] pt-8 pb-4 px-4 md:px-8 lg:px-12 xl:px-16 transition-all shrink-0 relative">
@@ -447,6 +448,7 @@ export default function App() {
                                             {activeTab === AppTab.VAULT && 'Vault'}
                                             {activeTab === AppTab.SCHEDULER && 'Automations'}
                                             {[AppTab.VAULT_DEALER, AppTab.DEALER_DASHBOARD, AppTab.DEALER_THINKING, AppTab.DEALER_CONFIG, AppTab.DEALER_PROMPT].includes(activeTab) && 'Hyperliquid Dealer'}
+                                            {[AppTab.SOLANA_DEALER, AppTab.SOLANA_DEALER_DASHBOARD, AppTab.SOLANA_DEALER_THINKING, AppTab.SOLANA_DEALER_POLICY, AppTab.SOLANA_DEALER_LOG].includes(activeTab) && 'Solana Dealer'}
                                             {activeTab === AppTab.CONFIGURATION && 'Configuration'}
                                             {activeTab === AppTab.HYPERLIQUID && 'Hyperliquid Trading'}
                                             {activeTab === AppTab.HISTORY && 'History'}
@@ -460,6 +462,7 @@ export default function App() {
                                             {activeTab === AppTab.VAULT && 'Manage your secure local vault and assets.'}
                                             {activeTab === AppTab.SCHEDULER && 'Automate swaps, transfers and trading strategies.'}
                                             {[AppTab.VAULT_DEALER, AppTab.DEALER_DASHBOARD, AppTab.DEALER_THINKING, AppTab.DEALER_CONFIG, AppTab.DEALER_PROMPT].includes(activeTab) && 'Autonomous trading engine (BETA).'}
+                                            {[AppTab.SOLANA_DEALER, AppTab.SOLANA_DEALER_DASHBOARD, AppTab.SOLANA_DEALER_THINKING, AppTab.SOLANA_DEALER_POLICY, AppTab.SOLANA_DEALER_LOG].includes(activeTab) && 'Solana LP operations with Policy Engine.'}
                                             {activeTab === AppTab.CONFIGURATION && 'Configure trading parameters and risk management.'}
                                             {activeTab === AppTab.HYPERLIQUID && 'Trade on Hyperliquid Testnet.'}
                                             {activeTab === AppTab.HISTORY && 'Review past conversations.'}
@@ -554,6 +557,48 @@ export default function App() {
                                             }`}
                                     >
                                         Prompt
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Center: Solana Dealer Tabs */}
+                            {[AppTab.SOLANA_DEALER, AppTab.SOLANA_DEALER_DASHBOARD, AppTab.SOLANA_DEALER_THINKING, AppTab.SOLANA_DEALER_POLICY, AppTab.SOLANA_DEALER_LOG].includes(activeTab) && (
+                                <div className="hidden sm:flex items-center gap-1 bg-[#1a1b21] p-1 rounded border border-[#232328] absolute left-1/2 transform -translate-x-1/2">
+                                    <button
+                                        onClick={() => setActiveTab(AppTab.SOLANA_DEALER_DASHBOARD)}
+                                        className={`px-3 py-1.5 rounded text-[11px] font-medium uppercase tracking-[0.05em] transition-colors ${[AppTab.SOLANA_DEALER, AppTab.SOLANA_DEALER_DASHBOARD].includes(activeTab)
+                                            ? 'bg-[#E7FE55] text-black'
+                                            : 'text-[#747580] hover:text-[#a0a1a8]'
+                                            }`}
+                                    >
+                                        Dashboard
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab(AppTab.SOLANA_DEALER_THINKING)}
+                                        className={`px-3 py-1.5 rounded text-[11px] font-medium uppercase tracking-[0.05em] transition-colors ${activeTab === AppTab.SOLANA_DEALER_THINKING
+                                            ? 'bg-[#E7FE55] text-black'
+                                            : 'text-[#747580] hover:text-[#a0a1a8]'
+                                            }`}
+                                    >
+                                        Thinking
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab(AppTab.SOLANA_DEALER_POLICY)}
+                                        className={`px-3 py-1.5 rounded text-[11px] font-medium uppercase tracking-[0.05em] transition-colors ${activeTab === AppTab.SOLANA_DEALER_POLICY
+                                            ? 'bg-[#E7FE55] text-black'
+                                            : 'text-[#747580] hover:text-[#a0a1a8]'
+                                            }`}
+                                    >
+                                        Policy
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab(AppTab.SOLANA_DEALER_LOG)}
+                                        className={`px-3 py-1.5 rounded text-[11px] font-medium uppercase tracking-[0.05em] transition-colors ${activeTab === AppTab.SOLANA_DEALER_LOG
+                                            ? 'bg-[#E7FE55] text-black'
+                                            : 'text-[#747580] hover:text-[#a0a1a8]'
+                                            }`}
+                                    >
+                                        Audit Log
                                     </button>
                                 </div>
                             )}
@@ -884,6 +929,14 @@ export default function App() {
                                 password={password}
                                 activeTab={activeTab}
                                 setActiveTab={setActiveTab}
+                            />
+                        )}
+
+                        {/* Solana Dealer Routes (LP Operations) */}
+                        {[AppTab.SOLANA_DEALER, AppTab.SOLANA_DEALER_DASHBOARD, AppTab.SOLANA_DEALER_THINKING, AppTab.SOLANA_DEALER_POLICY, AppTab.SOLANA_DEALER_LOG].includes(activeTab) && (
+                            <SolanaDealerConsole
+                                activeTab={activeTab}
+                                walletAddress={vault.publicKey || undefined}
                             />
                         )}
 
