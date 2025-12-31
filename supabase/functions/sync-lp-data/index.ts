@@ -5,23 +5,43 @@ const METEORA_API = "https://dlmm-api.meteora.ag";
 const RAYDIUM_API = "https://api-v3.raydium.io";
 
 serve(async (req) => {
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
-
   try {
     console.log("Starting LP Sync...");
+    
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    console.log(`Env Check - URL: ${url ? 'Set' : 'MISSING'}, Key: ${key ? 'Set (' + key.substring(0,10) + '...)' : 'MISSING'}`);
+
+    if (!url || !key) {
+        throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+    }
+
+    const supabase = createClient(url, key);
+
+    // Debug: Check Auth with simpler query
+    console.log("Testing DB connection...");
+    const { data: testData, error: testError } = await supabase.from('liquidity_pools').select('id').limit(1);
+    
+    if (testError) {
+        console.error("DB Connection/Auth Error:", JSON.stringify(testError));
+        throw new Error(`DB Auth failed: ${JSON.stringify(testError)}`);
+    }
+    console.log("DB connection OK");
 
     // 1. Fetch Meteora Pools (Lightweight curated list)
+    console.log("Fetching Meteora...");
     const meteoraResp = await fetch(`${METEORA_API}/pair/all_by_groups`);
     const meteoraData = await meteoraResp.json();
     const meteoraPools = meteoraData.groups?.flatMap((g: any) => g.pairs) || [];
+    console.log(`Fetched ${meteoraPools.length} Meteora pools`);
 
     // 2. Fetch Raydium Pools (Top 50)
+    console.log("Fetching Raydium...");
     const raydiumResp = await fetch(`${RAYDIUM_API}/pools/info/list?poolType=all&poolSortField=default&sortType=desc&pageSize=50&page=1`);
     const raydiumData = await raydiumResp.json();
     const raydiumPools = raydiumData.data?.data || [];
+    console.log(`Fetched ${raydiumPools.length} Raydium pools`);
 
     const allPools = [
       ...meteoraPools.map((p: any) => ({
@@ -50,6 +70,11 @@ serve(async (req) => {
       }))
     ];
 
+    console.log(`Total pools to process: ${allPools.length}`);
+
+    let successCount = 0;
+    let errorCount = 0;
+
     for (const pool of allPools) {
       // Upsert Metadata
       const { data: poolRow, error: poolError } = await supabase
@@ -64,10 +89,14 @@ serve(async (req) => {
         .select()
         .single();
 
-      if (poolError) continue;
+      if (poolError) {
+        console.error(`Error upserting pool ${pool.name}:`, poolError);
+        errorCount++;
+        continue;
+      }
 
       // Insert Snapshot
-      await supabase.from("liquidity_pool_snapshots").insert({
+      const { error: snapError } = await supabase.from("liquidity_pool_snapshots").insert({
         pool_id: poolRow.id,
         tvl: pool.tvl,
         volume_cumulative: pool.volume_cumulative,
@@ -75,9 +104,17 @@ serve(async (req) => {
         apy: pool.apy,
         price: pool.price
       });
+
+      if (snapError) {
+          console.error(`Error inserting snapshot for ${pool.name}:`, snapError);
+      } else {
+          successCount++;
+      }
     }
 
-    return new Response(JSON.stringify({ success: true, count: allPools.length }), {
+    console.log(`Sync completed. Success: ${successCount}, Errors: ${errorCount}`);
+
+    return new Response(JSON.stringify({ success: true, count: allPools.length, inserted: successCount }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
