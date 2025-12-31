@@ -36,18 +36,35 @@ class MeteoraService {
     /**
      * Fetch all DLMM pools from Meteora API
      */
+    /**
+     * Fetch all DLMM pools from Meteora API
+     * USES LIGHTWEIGHT ENDPOINT (all_by_groups) to avoid 150MB payload
+     */
     async getAllPools(limit: number = 100): Promise<LiquidityPool[]> {
         try {
-            const response = await fetch(`${this.apiBaseUrl}/pair/all`);
+            // Use 'all_by_groups' which is ~1.5MB instead of 'all' which is ~150MB
+            const response = await fetch(`${this.apiBaseUrl}/pair/all_by_groups`);
             if (!response.ok) {
                 throw new Error(`Meteora API error: ${response.status}`);
             }
 
             const data = await response.json();
-            const rawPools = Array.isArray(data) ? data : data.pairs || [];
+            let rawPools: any[] = [];
+
+            if (data.groups && Array.isArray(data.groups)) {
+                // Flatten groups into a single array of pools
+                data.groups.forEach((group: any) => {
+                    if (group.pairs && Array.isArray(group.pairs)) {
+                        rawPools.push(...group.pairs);
+                    }
+                });
+            } else if (Array.isArray(data)) {
+                rawPools = data;
+            } else if (data.pairs) {
+                rawPools = data.pairs;
+            }
 
             // Pre-sort by liquidity (descending) to get pools with actual data
-            // API returns liquidity as string, so parse it
             rawPools.sort((a: any, b: any) => {
                 const liqA = parseFloat(a.liquidity) || 0;
                 const liqB = parseFloat(b.liquidity) || 0;
@@ -57,7 +74,8 @@ class MeteoraService {
             return rawPools.slice(0, limit).map((pool: any) => this.mapApiPoolToLiquidityPool(pool));
         } catch (error) {
             console.error('[MeteoraService] Error fetching pools:', error);
-            return [];
+            // Throw so MCP knows it failed
+            throw error;
         }
     }
 

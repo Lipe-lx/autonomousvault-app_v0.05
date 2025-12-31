@@ -58,12 +58,38 @@ class LiquidityPoolMCP {
      * Discover pools across both protocols
      */
     async discoverPools(filters?: PoolQueryFilters): Promise<LiquidityPool[]> {
-        const [meteoraPools, raydiumPools] = await Promise.all([
+        const results = await Promise.allSettled([
             meteoraService.queryPools(filters || {}),
             raydiumService.queryPools(filters || {})
         ]);
 
-        let allPools = [...meteoraPools, ...raydiumPools];
+        let allPools: LiquidityPool[] = [];
+        const errors: string[] = [];
+
+        // Handle Meteora Result
+        if (results[0].status === 'fulfilled') {
+            allPools.push(...results[0].value);
+        } else {
+            console.error('Meteora discovery failed:', results[0].reason);
+            errors.push(`Meteora: ${results[0].reason?.message || 'Unknown error'}`);
+        }
+
+        // Handle Raydium Result
+        if (results[1].status === 'fulfilled') {
+            allPools.push(...results[1].value);
+        } else {
+            console.error('Raydium discovery failed:', results[1].reason);
+            errors.push(`Raydium: ${results[1].reason?.message || 'Unknown error'}`);
+        }
+
+        // Check if we have total failure
+        if (allPools.length === 0 && errors.length > 0) {
+            console.warn('All LP providers failed:', errors);
+            // We return empty array here, but logged errors.
+            // Ideally we could return the error details to the caller,
+            // but the interface returns Promise<LiquidityPool[]>.
+            // We rely on the caller checking length 0.
+        }
 
         // Apply cross-protocol sorting if needed
         if (filters?.sortBy) {
