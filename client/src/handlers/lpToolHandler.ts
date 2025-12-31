@@ -495,25 +495,24 @@ Tighter ranges = higher capital efficiency, more active management needed`
             // If tokenA/tokenB provided, show volatility for ALL pools of that pair
             if (args.tokenA && args.tokenB && !args.poolAddress) {
                 setAiStatus('Finding pools for token pair...');
-                const pools = await liquidityPoolMCP.searchPools(args.tokenA, args.tokenB);
+                
+                // Search pools from Supabase (where historical data exists)
+                const pools = await volatilityService.searchPoolsByTokenPair(args.tokenA, args.tokenB, 10);
                 
                 if (pools.length === 0) {
                     return { 
-                        type: 'error', 
+                        type: 'info', 
                         title: 'No Pool Found', 
-                        details: `No pool found for ${args.tokenA}/${args.tokenB}.` 
+                        details: `No pool found in database for ${args.tokenA}/${args.tokenB}.\n\nThis could mean:\n- No pools exist for this pair\n- Pools haven't been synced yet (sync runs every 5 min)\n\nTry searching for available pools with: "liste pools"` 
                     };
                 }
                 
-                // Sort by TVL and limit to top 10
-                const topPools = pools.sort((a, b) => b.tvl - a.tvl).slice(0, 10);
-                
                 let details = `📊 **Volatility Analysis for ${args.tokenA}/${args.tokenB}**\n`;
-                details += `Found ${pools.length} pools (showing top ${topPools.length} by TVL)\n\n`;
+                details += `Found ${pools.length} pools\n\n`;
                 details += `| Pool | Protocol | TVL | Daily Vol | Ann. Vol | Price |\n`;
                 details += `|------|----------|-----|-----------|----------|-------|\n`;
                 
-                for (const pool of topPools) {
+                for (const pool of pools) {
                     const volatility = await volatilityService.calculateVolatility(pool.address, args.days || 7);
                     const protocol = pool.protocol.includes('meteora') ? 'MET' : 'RAY';
                     const dailyVol = volatility.error ? 'N/A' : `${volatility.volatilityDaily.toFixed(2)}%`;
@@ -580,22 +579,21 @@ ${confidenceEmoji} Confidence: ${volatility.confidence.toUpperCase()} (${volatil
             let poolAddress = args.poolAddress;
             let poolName = '';
             
-            // If no poolAddress but tokenA/tokenB provided, find the best pool
+            // If no poolAddress but tokenA/tokenB provided, find the best pool from Supabase
             if (!poolAddress && args.tokenA && args.tokenB) {
                 setAiStatus('Finding best pool for token pair...');
-                const pools = await liquidityPoolMCP.searchPools(args.tokenA, args.tokenB);
+                const pools = await volatilityService.searchPoolsByTokenPair(args.tokenA, args.tokenB, 1);
                 
                 if (pools.length === 0) {
                     return { 
-                        type: 'error', 
+                        type: 'info', 
                         title: 'No Pool Found', 
-                        details: `No pool found for ${args.tokenA}/${args.tokenB}.` 
+                        details: `No pool found in database for ${args.tokenA}/${args.tokenB}.\n\nTry: "liste pools" to see available pools.` 
                     };
                 }
                 
-                const bestPool = pools.sort((a, b) => b.tvl - a.tvl)[0];
-                poolAddress = bestPool.address;
-                poolName = bestPool.name;
+                poolAddress = pools[0].address;
+                poolName = pools[0].name;
             }
             
             if (!poolAddress) {

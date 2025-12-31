@@ -252,6 +252,61 @@ class VolatilityService {
         }
     }
 
+    /**
+     * Search pools by token pair name from Supabase
+     * Returns pools that have historical data for volatility calculation
+     */
+    async searchPoolsByTokenPair(
+        tokenA: string,
+        tokenB: string,
+        limit: number = 10
+    ): Promise<{ address: string; name: string; protocol: string; tvl: number }[]> {
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+            console.warn('[VolatilityService] Supabase client not available');
+            return [];
+        }
+
+        try {
+            // Search by pool name containing both tokens (case insensitive)
+            const searchPattern1 = `%${tokenA}%${tokenB}%`;
+            const searchPattern2 = `%${tokenB}%${tokenA}%`;
+            
+            const { data: pools, error } = await supabase
+                .from('liquidity_pools')
+                .select(`
+                    address,
+                    name,
+                    protocol,
+                    liquidity_pool_snapshots!inner (
+                        tvl,
+                        timestamp
+                    )
+                `)
+                .or(`name.ilike.${searchPattern1},name.ilike.${searchPattern2}`)
+                .order('timestamp', { foreignTable: 'liquidity_pool_snapshots', ascending: false })
+                .limit(1, { foreignTable: 'liquidity_pool_snapshots' });
+
+            if (error) {
+                console.error('[VolatilityService] Error searching pools:', error);
+                return [];
+            }
+
+            // Map and sort by TVL
+            const result = (pools || []).map((p: any) => ({
+                address: p.address,
+                name: p.name,
+                protocol: p.protocol,
+                tvl: p.liquidity_pool_snapshots?.[0]?.tvl || 0
+            })).sort((a, b) => b.tvl - a.tvl).slice(0, limit);
+
+            return result;
+        } catch (error) {
+            console.error('[VolatilityService] Error in searchPoolsByTokenPair:', error);
+            return [];
+        }
+    }
+
     // ============================================
     // HELPER METHODS
     // ============================================
