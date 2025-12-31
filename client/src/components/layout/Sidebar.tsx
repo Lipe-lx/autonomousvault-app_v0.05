@@ -6,14 +6,16 @@ import {
     LockKeyhole,
     Bot,
     Zap,
-    Plus,
     Coins,
     TrendingUp,
-    Droplets
+    Droplets,
+    ChevronDown,
+    ChevronRight,
+    Briefcase
 } from 'lucide-react';
 import { AppTab } from '../../types';
 import { hyperliquidService } from '../../services/hyperliquidService';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { TooltipProvider } from '../ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -33,13 +35,15 @@ interface NavItemProps {
     label: string;
     isActive: boolean;
     onClick: () => void;
+    isSubItem?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, onClick }) => (
+const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, onClick, isSubItem = false }) => (
     <button
         onClick={onClick}
         className={cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
+            "w-full flex items-center gap-3 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
+            isSubItem ? "px-3 py-2 pl-6" : "px-3 py-2.5",
             isActive
                 ? "text-white bg-[#1a1b21]/80 backdrop-blur-sm"
                 : "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40"
@@ -48,16 +52,81 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, onClick }) => 
     >
         {/* Active indicator bar */}
         {isActive && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#E7FE55] rounded-full" />
+            <div className={cn(
+                "absolute top-1/2 -translate-y-1/2 w-1 rounded-full bg-[#E7FE55]",
+                isSubItem ? "left-0 h-4" : "left-0 h-6"
+            )} />
         )}
         <span className={cn(
-            "flex items-center justify-center transition-colors ml-1",
+            "flex items-center justify-center transition-colors",
+            !isSubItem && "ml-1",
             isActive && "text-[#E7FE55]"
         )}>
             {icon}
         </span>
         <span className="tracking-wide">{label}</span>
     </button>
+);
+
+interface NavGroupProps {
+    icon: React.ReactNode;
+    label: string;
+    isExpanded: boolean;
+    onToggle: () => void;
+    hasActiveChild: boolean;
+    children: React.ReactNode;
+}
+
+const NavGroup: React.FC<NavGroupProps> = ({ icon, label, isExpanded, onToggle, hasActiveChild, children }) => (
+    <div className="space-y-0.5">
+        <button
+            onClick={onToggle}
+            className={cn(
+                "w-full flex items-center justify-between px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
+                hasActiveChild
+                    ? "text-white bg-[#1a1b21]/80 backdrop-blur-sm"
+                    : "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40"
+            )}
+            title={label}
+        >
+            <div className="flex items-center gap-3">
+                {/* Active indicator bar */}
+                {hasActiveChild && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#E7FE55] rounded-full" />
+                )}
+                <span className={cn(
+                    "flex items-center justify-center transition-colors ml-1",
+                    hasActiveChild && "text-[#E7FE55]"
+                )}>
+                    {icon}
+                </span>
+                <span className="tracking-wide">{label}</span>
+            </div>
+            <motion.span
+                initial={false}
+                animate={{ rotate: isExpanded ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-[#5a5b63]"
+            >
+                <ChevronDown size={14} />
+            </motion.span>
+        </button>
+        <AnimatePresence initial={false}>
+            {isExpanded && (
+                <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                >
+                    <div className="relative ml-1 pl-2 border-l border-[#2a2b30]">
+                        {children}
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    </div>
 );
 
 const StatusIndicator: React.FC<{ status: 'Online' | 'Down' | 'Checking'; label: string; latency?: string; network: 'solana' | 'hyperliquid' }> = ({
@@ -100,6 +169,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onClose
 }) => {
     const [hlStatus, setHlStatus] = useState<'Online' | 'Down' | 'Checking'>('Checking');
+    
+    // State for dealer submenu expansion - auto-expand when any dealer is active
+    const isDealerActive = [AppTab.VAULT_DEALER, AppTab.DEALER_DASHBOARD, AppTab.DEALER_THINKING, AppTab.DEALER_CONFIG, AppTab.DEALER_PROMPT].includes(activeTab);
+    const isPolymarketDealerActive = [AppTab.POLYMARKET_DEALER, AppTab.POLYMARKET_DASHBOARD, AppTab.POLYMARKET_THINKING, AppTab.POLYMARKET_CONFIG, AppTab.POLYMARKET_PROMPT].includes(activeTab);
+    const isSolanaDealerActive = [AppTab.SOLANA_DEALER, AppTab.SOLANA_DEALER_DASHBOARD, AppTab.SOLANA_DEALER_THINKING, AppTab.SOLANA_DEALER_POLICY, AppTab.SOLANA_DEALER_LOG].includes(activeTab);
+    const isAnyDealerActive = isDealerActive || isPolymarketDealerActive || isSolanaDealerActive;
+    
+    const [isDealerExpanded, setIsDealerExpanded] = useState(isAnyDealerActive);
+    const isManagerActive = activeTab === AppTab.AGENT;
+
+    // Auto-expand when dealer becomes active
+    useEffect(() => {
+        if (isAnyDealerActive) {
+            setIsDealerExpanded(true);
+        }
+    }, [isAnyDealerActive]);
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -115,11 +200,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         setActiveTab(tab);
         if (onClose) onClose();
     };
-
-    const isDealerActive = [AppTab.VAULT_DEALER, AppTab.DEALER_DASHBOARD, AppTab.DEALER_THINKING, AppTab.DEALER_CONFIG, AppTab.DEALER_PROMPT].includes(activeTab);
-    const isPolymarketDealerActive = [AppTab.POLYMARKET_DEALER, AppTab.POLYMARKET_DASHBOARD, AppTab.POLYMARKET_THINKING, AppTab.POLYMARKET_CONFIG, AppTab.POLYMARKET_PROMPT].includes(activeTab);
-    const isSolanaDealerActive = [AppTab.SOLANA_DEALER, AppTab.SOLANA_DEALER_DASHBOARD, AppTab.SOLANA_DEALER_THINKING, AppTab.SOLANA_DEALER_POLICY, AppTab.SOLANA_DEALER_LOG].includes(activeTab);
-    const isManagerActive = activeTab === AppTab.AGENT;
 
     return (
         <TooltipProvider delayDuration={300}>
@@ -161,118 +241,51 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onClick={() => handleNavigation(AppTab.DASHBOARD)}
                     />
 
-                    {/* Vault Operator Group */}
-                    <div
+                    {/* Vault Operator */}
+                    <NavItem
+                        icon={<Bot size={18} />}
+                        label="Vault Operator"
+                        isActive={isManagerActive}
                         onClick={() => handleNavigation(AppTab.AGENT)}
-                        className={cn(
-                            "flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 cursor-pointer relative overflow-hidden",
-                            isManagerActive
-                                ? "bg-[#1a1b21]/80 backdrop-blur-sm"
-                                : "hover:bg-[#1a1b21]/40"
-                        )}
+                    />
+
+                    {/* Vault Dealer - Parent with expandable subpages */}
+                    <NavGroup
+                        icon={<Briefcase size={18} />}
+                        label="Vault Dealer"
+                        isExpanded={isDealerExpanded}
+                        onToggle={() => setIsDealerExpanded(!isDealerExpanded)}
+                        hasActiveChild={isAnyDealerActive}
                     >
-                        {/* Active indicator bar */}
-                        {isManagerActive && (
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#E7FE55] rounded-full" />
-                        )}
-                        <div
-                            className={cn(
-                                "ml-1",
-                                "flex flex-1 items-center gap-3 text-[13px] font-medium",
-                                activeTab === AppTab.AGENT ? "text-white" : "text-[#747580] hover:text-[#a0a1a8]"
-                            )}
-                            title="Vault Operator"
-                        >
-                            <span className={cn(
-                                "transition-colors",
-                                activeTab === AppTab.AGENT && "text-[#E7FE55]"
-                            )}>
-                                <Bot size={18} />
-                            </span>
-                            <span className="tracking-wide">Vault Operator</span>
-                        </div>
-
-                    </div>
-
-                    {/* Hyperliquid Dealer (Green) */}
-                    <div className="pt-2">
-                        <button
+                        {/* Hyperliquid */}
+                        <NavItem
+                            icon={<Zap size={16} />}
+                            label="Hyperliquid"
+                            isActive={isDealerActive}
                             onClick={() => handleNavigation(AppTab.VAULT_DEALER)}
-                            className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
-                                isDealerActive
-                                    ? "text-white bg-[#1a1b21]/80 backdrop-blur-sm"
-                                    : "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40"
-                            )}
-                            title="Hyperliquid Dealer"
-                        >
-                            {/* Active indicator bar */}
-                            {isDealerActive && (
-                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#E7FE55] rounded-full" />
-                            )}
-                            <span className={cn(
-                                "transition-colors ml-1",
-                                isDealerActive && "text-[#E7FE55]"
-                            )}>
-                                <Zap size={18} />
-                            </span>
-                            <span className="tracking-wide">Hyperliquid Dealer</span>
-                        </button>
-                    </div>
-
-                    {/* Solana Dealer (LP Operations) */}
-                    <div>
-                        <button
+                            isSubItem
+                        />
+                        
+                        {/* Solana */}
+                        <NavItem
+                            icon={<Droplets size={16} />}
+                            label="Solana"
+                            isActive={isSolanaDealerActive}
                             onClick={() => handleNavigation(AppTab.SOLANA_DEALER)}
-                            className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
-                                isSolanaDealerActive
-                                    ? "text-white bg-[#1a1b21]/80 backdrop-blur-sm"
-                                    : "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40"
-                            )}
-                            title="Solana Dealer"
-                        >
-                            {/* Active indicator bar */}
-                            {isSolanaDealerActive && (
-                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#E7FE55] rounded-full" />
-                            )}
-                            <span className={cn(
-                                "transition-colors ml-1",
-                                isSolanaDealerActive && "text-[#E7FE55]"
-                            )}>
-                                <Droplets size={18} />
-                            </span>
-                            <span className="tracking-wide">Solana Dealer</span>
-                        </button>
-                    </div>
-
-                    {/* Polymarket Dealer - (Blue) */}
-                    <div>
-                        <button
+                            isSubItem
+                        />
+                        
+                        {/* Polymarket */}
+                        <NavItem
+                            icon={<TrendingUp size={16} />}
+                            label="Polymarket"
+                            isActive={isPolymarketDealerActive}
                             onClick={() => handleNavigation(AppTab.POLYMARKET_DEALER)}
-                            className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
-                                isPolymarketDealerActive
-                                    ? "text-white bg-[#1a1b21]/80 backdrop-blur-sm"
-                                    : "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40"
-                            )}
-                            title="Polymarket Dealer"
-                        >
-                            {/* Active indicator bar */}
-                            {isPolymarketDealerActive && (
-                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#E7FE55] rounded-full" />
-                            )}
-                            <span className={cn(
-                                "transition-colors ml-1",
-                                isPolymarketDealerActive && "text-[#E7FE55]"
-                            )}>
-                                <TrendingUp size={18} />
-                            </span>
-                            <span className="tracking-wide">Polymarket Dealer</span>
-                        </button>
-                    </div>
+                            isSubItem
+                        />
+                    </NavGroup>
 
-                    {/* Vault - Solana (Purple) */}
+                    {/* Vault */}
                     <NavItem
                         icon={<LockKeyhole size={18} />}
                         label="Vault"
