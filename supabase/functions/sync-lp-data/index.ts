@@ -59,14 +59,14 @@ serve(async (req) => {
       ...raydiumPools.map((p: any) => ({
         address: p.id,
         protocol: p.type === "Concentrated" ? "raydium_clmm" : "raydium_cpmm",
-        name: p.poolName || `${p.mintA?.symbol}-${p.mintB?.symbol}`,
+        name: p.poolName || `${p.mintA?.symbol || 'Unknown'}-${p.mintB?.symbol || 'Unknown'}`,
         token_a_mint: p.mintA?.address,
         token_b_mint: p.mintB?.address,
         tvl: p.tvl || 0,
-        volume_cumulative: p.cumulativeVolume || 0, // Raydium might use different field
-        volume_24h: p.day?.volume || 0,
-        apy: p.day?.apr || 0,
-        price: p.price || 0
+        volume_cumulative: 0, // Raydium doesn't provide cumulative
+        volume_24h: p.day?.volume || p.volume24h || 0,
+        apy: (p.day?.apr || p.apr24h || 0) * 100, // Convert to percentage if needed
+        price: p.price || p.lpPrice || (p.mintA?.price ? p.mintB?.price / p.mintA?.price : 0) || 0
       }))
     ];
 

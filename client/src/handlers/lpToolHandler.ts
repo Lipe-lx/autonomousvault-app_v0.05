@@ -492,6 +492,52 @@ Tighter ranges = higher capital efficiency, more active management needed`
         try {
             setAiStatus('Calculating pool volatility...');
             
+            // If tokenA/tokenB provided, show volatility for ALL pools of that pair
+            if (args.tokenA && args.tokenB && !args.poolAddress) {
+                setAiStatus('Finding pools for token pair...');
+                const pools = await liquidityPoolMCP.searchPools(args.tokenA, args.tokenB);
+                
+                if (pools.length === 0) {
+                    return { 
+                        type: 'error', 
+                        title: 'No Pool Found', 
+                        details: `No pool found for ${args.tokenA}/${args.tokenB}.` 
+                    };
+                }
+                
+                // Sort by TVL and limit to top 10
+                const topPools = pools.sort((a, b) => b.tvl - a.tvl).slice(0, 10);
+                
+                let details = `📊 **Volatility Analysis for ${args.tokenA}/${args.tokenB}**\n`;
+                details += `Found ${pools.length} pools (showing top ${topPools.length} by TVL)\n\n`;
+                details += `| Pool | Protocol | TVL | Daily Vol | Ann. Vol | Price |\n`;
+                details += `|------|----------|-----|-----------|----------|-------|\n`;
+                
+                for (const pool of topPools) {
+                    const volatility = await volatilityService.calculateVolatility(pool.address, args.days || 7);
+                    const protocol = pool.protocol.includes('meteora') ? 'MET' : 'RAY';
+                    const dailyVol = volatility.error ? 'N/A' : `${volatility.volatilityDaily.toFixed(2)}%`;
+                    const annVol = volatility.error ? 'N/A' : `${volatility.volatilityAnnualized.toFixed(1)}%`;
+                    const price = volatility.currentPrice > 0 ? `$${volatility.currentPrice.toFixed(4)}` : 'N/A';
+                    const tvl = pool.tvl >= 1000 ? `$${(pool.tvl / 1000).toFixed(1)}K` : `$${pool.tvl.toFixed(0)}`;
+                    
+                    details += `| ${pool.name.slice(0, 15)} | ${protocol} | ${tvl} | ${dailyVol} | ${annVol} | ${price} |\n`;
+                }
+                
+                details += `\n*Note: Volatility calculated from ${args.days || 7} days of historical data.*`;
+                
+                return { type: 'success', title: `${args.tokenA}/${args.tokenB} Volatility`, details };
+            }
+            
+            // Single pool by address
+            if (!args.poolAddress) {
+                return { 
+                    type: 'error', 
+                    title: 'Missing Parameter', 
+                    details: 'Please provide either poolAddress OR tokenA and tokenB (e.g., tokenA="SOL", tokenB="USDC")' 
+                };
+            }
+            
             const days = args.days || 7;
             const volatility = await volatilityService.calculateVolatility(args.poolAddress, days);
 
@@ -531,11 +577,40 @@ ${confidenceEmoji} Confidence: ${volatility.confidence.toUpperCase()} (${volatil
         try {
             setAiStatus('Calculating optimal ranges...');
             
-            // First get volatility
-            const volatility = await volatilityService.calculateVolatility(args.poolAddress, args.days || 7);
+            let poolAddress = args.poolAddress;
+            let poolName = '';
+            
+            // If no poolAddress but tokenA/tokenB provided, find the best pool
+            if (!poolAddress && args.tokenA && args.tokenB) {
+                setAiStatus('Finding best pool for token pair...');
+                const pools = await liquidityPoolMCP.searchPools(args.tokenA, args.tokenB);
+                
+                if (pools.length === 0) {
+                    return { 
+                        type: 'error', 
+                        title: 'No Pool Found', 
+                        details: `No pool found for ${args.tokenA}/${args.tokenB}.` 
+                    };
+                }
+                
+                const bestPool = pools.sort((a, b) => b.tvl - a.tvl)[0];
+                poolAddress = bestPool.address;
+                poolName = bestPool.name;
+            }
+            
+            if (!poolAddress) {
+                return { 
+                    type: 'error', 
+                    title: 'Missing Parameter', 
+                    details: 'Please provide either poolAddress OR tokenA and tokenB' 
+                };
+            }
+            
+            // Get volatility
+            const volatility = await volatilityService.calculateVolatility(poolAddress, args.days || 7);
             
             if (!volatility.currentPrice || volatility.currentPrice === 0) {
-                return { type: 'error', title: 'Range Error', details: 'Could not get current price for pool.' };
+                return { type: 'error', title: 'Range Error', details: 'Could not get current price for pool. Make sure the pool has historical data in the database.' };
             }
 
             // Get range suggestions
@@ -547,7 +622,8 @@ ${confidenceEmoji} Confidence: ${volatility.confidence.toUpperCase()} (${volatil
                 'aggressive': '🔴'
             };
 
-            let details = `📐 **Optimal Range Suggestions**\n`;
+            const poolDisplay = poolName || poolAddress.slice(0, 8) + '...';
+            let details = `📐 **Optimal Range Suggestions for ${poolDisplay}**\n`;
             details += `Current Price: $${volatility.currentPrice.toFixed(4)}\n`;
             details += `Daily Volatility: ${volatility.volatilityDaily.toFixed(2)}%\n\n`;
 
