@@ -167,20 +167,34 @@ class LiquidityPoolMCP {
             limit?: number;
         }
     ): Promise<PoolRanking[]> {
-        const pools = await this.discoverPools({
-            minTVL: options?.minTVL,
-            volumeTimeframe: options?.timeframe,
-            sortBy: criteria,
-            sortOrder: 'desc',
-            limit: (options?.limit || 10) * 2 // Get extra for filtering
-        });
+        // Use poolService.getTopPools which queries Supabase with proper sorting
+        const timeframeMinutes = this.timeframeToMinutes(options?.timeframe || '24h');
+        const pools = await poolService.getTopPools(criteria, timeframeMinutes);
+        
+        // Apply TVL filter if specified
+        let filteredPools = pools;
+        if (options?.minTVL) {
+            filteredPools = pools.filter(p => p.tvl >= options.minTVL!);
+        }
 
-        return pools.slice(0, options?.limit || 10).map((pool, index) => ({
+        return filteredPools.slice(0, options?.limit || 10).map((pool, index) => ({
             pool,
             rank: index + 1,
             score: this.getPoolScore(pool, criteria),
             reason: `#${index + 1} by ${criteria} across all protocols`
         }));
+    }
+    
+    private timeframeToMinutes(timeframe: TimeFrame): number {
+        switch (timeframe) {
+            case '5m': return 5;
+            case '15m': return 15;
+            case '1h': return 60;
+            case '4h': return 240;
+            case '24h': return 1440;
+            case '7d': return 10080;
+            default: return 1440;
+        }
     }
 
     /**
