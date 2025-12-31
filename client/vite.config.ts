@@ -29,6 +29,18 @@ export default defineConfig(({ mode }) => {
                     rewrite: (path) => path.replace(/^\/polymarket-api/, ''),
                     secure: false,
                 },
+                '/meteora-api': {
+                    target: 'https://dlmm-api.meteora.ag',
+                    changeOrigin: true,
+                    rewrite: (path) => path.replace(/^\/meteora-api/, ''),
+                    secure: false,
+                },
+                '/raydium-api': {
+                    target: 'https://api-v3.raydium.io',
+                    changeOrigin: true,
+                    rewrite: (path) => path.replace(/^\/raydium-api/, ''),
+                    secure: false,
+                },
             },
         },
         plugins: [
@@ -61,6 +73,23 @@ export default defineConfig(({ mode }) => {
                 buffer: 'buffer',
                 assert: 'assert',
             },
+        },
+        build: {
+            rollupOptions: {
+                // These are optional SDKs loaded dynamically at runtime
+                // Mark as external to prevent build errors when not installed
+                external: [
+                    '@meteora-ag/dlmm',
+                    '@raydium-io/raydium-sdk-v2'
+                ],
+                output: {
+                    // Provide a way to load these at runtime if they exist
+                    globals: {
+                        '@meteora-ag/dlmm': 'MeteoraDLMM',
+                        '@raydium-io/raydium-sdk-v2': 'RaydiumSDK'
+                    }
+                }
+            }
         }
     };
 });

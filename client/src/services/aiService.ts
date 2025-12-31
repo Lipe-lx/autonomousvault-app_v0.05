@@ -13,6 +13,7 @@ import { aiConfigStore } from '../state/aiConfigStore';
  * So we need at least 12 seconds between requests (60s / 5 = 12s)
  */
 import { aiRequestQueue } from './ai/requestQueue';
+import { getLPToolDeclarations } from './ai/lpTools';
 
 export class AIService {
   private client: GoogleGenAI | null = null;
@@ -457,7 +458,10 @@ export class AIService {
       }
     };
 
-    return [{ functionDeclarations: [getBalanceTool, swapTool, withdrawTool, transferTokenTool, scheduleTool, getMarketPriceTool, getOHLCVTool, getIndicatorTool, getTradingViewSummaryTool, getHLBalanceTool, getHLPositionsTool, getHLMarketDataTool, createHLOrderTool, cancelHLOrderTool, updateHLLeverageTool, closeHLPositionTool, withdrawFromHLTool, getDealerTradeHistoryTool] }];
+    // LP Tools for Meteora and Raydium pools
+    const lpTools = getLPToolDeclarations();
+
+    return [{ functionDeclarations: [getBalanceTool, swapTool, withdrawTool, transferTokenTool, scheduleTool, getMarketPriceTool, getOHLCVTool, getIndicatorTool, getTradingViewSummaryTool, getHLBalanceTool, getHLPositionsTool, getHLMarketDataTool, createHLOrderTool, cancelHLOrderTool, updateHLLeverageTool, closeHLPositionTool, withdrawFromHLTool, getDealerTradeHistoryTool, ...lpTools] }];
   }
 
   async sendMessage(

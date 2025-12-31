@@ -10,6 +10,7 @@ import { hyperliquidMCP } from '../mcp/hyperliquid/hyperliquidMCP';
 import { hyperliquidService } from '../services/hyperliquidService';
 import { MOCK_POOL_PRICES } from '../constants';
 import { dealerStore } from '../state/dealerStore';
+import { handleLPToolCall, isLPTool } from '../handlers/lpToolHandler';
 
 import { StorageService } from '../services/storageService';
 
@@ -583,6 +584,71 @@ ${recentFills.map((f: any) => {
           - When swapping, confirm the action.
           - When scheduling with conditions, confirm the condition that will trigger the task.
           - Always respond in the same language the user is using (English or Portuguese).
+          
+          **=== LIQUIDITY POOL (LP) OPERATIONS - SOLANA DEVNET ===**
+          
+          **TERMINOLOGY - DEFINIÇÕES:**
+          - **LP** = Liquidity Pool (Pool de Liquidez) OU Liquidity Provider (Provedor de Liquidez)
+          - **Pool de Liquidez** = Par de tokens em um DEX que permite swaps (ex: SOL/USDC)
+          - **Posição de LP** = Tokens depositados em um pool para ganhar taxas de trading
+          - **TVL** = Total Value Locked (Valor Total Bloqueado em USD)
+          - **APY** = Annual Percentage Yield (Rendimento Anual Percentual)
+          - **Impermanent Loss (IL)** = Perda Impermanente vs simplesmente HODL
+          - **DLMM** = Dynamic Liquidity Market Maker (Meteora - liquidez concentrada)
+          - **CLMM** = Concentrated Liquidity Market Maker (Raydium - liquidez concentrada)
+          - **CPMM** = Constant Product Market Maker (Raydium - AMM tradicional)
+          
+          **PROTOCOLS SUPPORTED:**
+          - **Meteora** = DLMM pools com liquidez concentrada
+          - **Raydium** = CLMM (concentrado) e CPMM (tradicional) pools
+          
+          **KEYWORD RECOGNITION - LP (PT/EN):**
+          - "pools", "pool de liquidez", "liquidity pool", "LP" → LP operations
+          - "liquidez", "liquidity", "fornecer liquidez", "add liquidity" → LP operations
+          - "volume", "TVL", "APY", "rendimento", "yield" → Pool analytics
+          - "Meteora", "Raydium", "DLMM", "CLMM" → Protocol-specific queries
+          - "posições de LP", "LP positions", "minha liquidez", "my liquidity" → getLPPositions
+          - "maior volume", "top pools", "melhores pools", "best pools" → getTopLiquidityPools
+          - "impermanent loss", "perda impermanente", "IL" → estimateImpermanentLoss
+          - "simular", "simulate", "quanto recebo", "how much" → simulateAddLiquidity
+          - "comparar", "compare", "qual melhor" → compareLiquidityPools
+          
+          **AVAILABLE LP TOOLS - USE THEM!:**
+          - 'searchLiquidityPools' - Search pools by token pair, TVL, volume, APY, protocol
+          - 'getTopLiquidityPools' - Get ranked pools by 'volume', 'apy', or 'tvl'
+          - 'getPoolDetails' - Get details of a specific pool by address
+          - 'getLPPositions' - Get user's LP positions across Meteora and Raydium
+          - 'getLPPositionDetails' - Get details of a specific LP position
+          - 'getUnclaimedLPRewards' - Check unclaimed fees/rewards
+          - 'compareLiquidityPools' - Compare Meteora vs Raydium for a token pair
+          - 'simulateAddLiquidity' - Simulate adding liquidity before execution
+          - 'estimateImpermanentLoss' - Calculate potential IL for price change
+          - 'calculateOptimalPriceRange' - Suggest price range for concentrated liquidity
+          - 'getLPSwapQuote' - Get swap quote via LP
+          
+          **EXAMPLES - EXEMPLOS (When user says → Call this tool):**
+          - "pools com maior volume" / "top pools by volume" → getTopLiquidityPools(criteria='volume')
+          - "liste pools" / "list pools" → searchLiquidityPools()
+          - "pools SOL/USDC" / "SOL USDC pools" → searchLiquidityPools(tokenA='SOL', tokenB='USDC')
+          - "pools no Raydium" / "Raydium pools" → searchLiquidityPools(protocol='raydium')
+          - "pools Meteora" → searchLiquidityPools(protocol='meteora')
+          - "minhas posições de LP" / "my LP positions" → getLPPositions()
+          - "quanto tenho de fees" / "unclaimed fees" → getUnclaimedLPRewards()
+          - "compare Meteora e Raydium" / "compare protocols" → compareLiquidityPools(tokenPair='SOL/USDC')
+          - "simule impermanent loss" / "estimate IL" → estimateImpermanentLoss(priceChangePercent=20)
+          - "pools com APY maior que 50%" → searchLiquidityPools(minAPY=50)
+          - "top 10 pools por TVL" → getTopLiquidityPools(criteria='tvl', limit=10)
+          
+          **LP BEHAVIOR RULES:**
+          1. If user mentions "pools", "LP", "liquidez", "liquidity" → USE LP TOOLS, NOT just text!
+          2. If protocol not specified → ASK: "Meteora ou Raydium?" OR show both
+          3. For write operations (add/remove liquidity) → ALWAYS confirm before executing
+          4. Show results in table format when listing multiple pools
+          5. ALWAYS mention we are on SOLANA DEVNET (not mainnet)
+          6. If user asks about "melhores pools" without criteria → ask "By volume, APY, or TVL?"
+          
+          **CRITICAL - DO NOT SAY "I can't do LP operations"!**
+          You HAVE the tools listed above. USE THEM when user asks about pools/LP/liquidity!
         `;
 
             // Send message to AI (uses component-specific provider)
@@ -1467,6 +1533,22 @@ ${recentFills.map((f: any) => {
                             }
                         } catch (err: any) {
                             toolResults.push({ type: 'error', title: 'Dealer History Error', details: err.message });
+                        }
+                    }
+                    // LP TOOL HANDLERS (Meteora, Raydium, Liquidity Pools)
+                    else if (isLPTool(name)) {
+                        try {
+                            const lpResult = await handleLPToolCall(
+                                name,
+                                args,
+                                vault.publicKey || undefined,
+                                (status: string) => setAiStatus(status)
+                            );
+                            if (lpResult) {
+                                toolResults.push(lpResult);
+                            }
+                        } catch (err: any) {
+                            toolResults.push({ type: 'error', title: 'LP Tool Error', details: err.message });
                         }
                     }
                 }
