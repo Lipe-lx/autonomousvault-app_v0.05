@@ -5,6 +5,7 @@ import { meteoraMCP } from '../meteora/meteoraMCP';
 import { raydiumMCP } from '../raydium/raydiumMCP';
 import { meteoraService } from '../../services/meteoraService';
 import { raydiumService } from '../../services/raydiumService';
+import { poolService } from '../../services/poolService';
 import {
     LiquidityPool,
     LiquidityPosition,
@@ -58,72 +59,8 @@ class LiquidityPoolMCP {
      * Discover pools across both protocols
      */
     async discoverPools(filters?: PoolQueryFilters): Promise<LiquidityPool[]> {
-        const results = await Promise.allSettled([
-            meteoraService.queryPools(filters || {}),
-            raydiumService.queryPools(filters || {})
-        ]);
-
-        let allPools: LiquidityPool[] = [];
-        const errors: string[] = [];
-
-        // Handle Meteora Result
-        if (results[0].status === 'fulfilled') {
-            allPools.push(...results[0].value);
-        } else {
-            console.error('Meteora discovery failed:', results[0].reason);
-            errors.push(`Meteora: ${results[0].reason?.message || 'Unknown error'}`);
-        }
-
-        // Handle Raydium Result
-        if (results[1].status === 'fulfilled') {
-            allPools.push(...results[1].value);
-        } else {
-            console.error('Raydium discovery failed:', results[1].reason);
-            errors.push(`Raydium: ${results[1].reason?.message || 'Unknown error'}`);
-        }
-
-        // Check if we have total failure
-        if (allPools.length === 0 && errors.length > 0) {
-            console.warn('All LP providers failed:', errors);
-            // We return empty array here, but logged errors.
-            // Ideally we could return the error details to the caller,
-            // but the interface returns Promise<LiquidityPool[]>.
-            // We rely on the caller checking length 0.
-        }
-
-        // Apply cross-protocol sorting if needed
-        if (filters?.sortBy) {
-            allPools.sort((a, b) => {
-                const order = filters.sortOrder === 'asc' ? 1 : -1;
-                let valA: number, valB: number;
-
-                switch (filters.sortBy) {
-                    case 'tvl':
-                        valA = a.tvl;
-                        valB = b.tvl;
-                        break;
-                    case 'volume':
-                        const tf = filters.volumeTimeframe || '24h';
-                        valA = a.volume[tf] || a.volume['24h'] || 0;
-                        valB = b.volume[tf] || b.volume['24h'] || 0;
-                        break;
-                    case 'apy':
-                        valA = a.apy || 0;
-                        valB = b.apy || 0;
-                        break;
-                    default:
-                        valA = 0;
-                        valB = 0;
-                }
-                return (valB - valA) * order;
-            });
-        }
-
-        if (filters?.limit) {
-            allPools = allPools.slice(0, filters.limit);
-        }
-
-        return allPools;
+        // Use Supabase Service which is much faster and reliable
+        return await poolService.searchPools(filters || {});
     }
 
     /**
