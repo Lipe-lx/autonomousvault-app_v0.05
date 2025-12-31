@@ -138,20 +138,18 @@ export default function App() {
         setPMBackupKey
     } = useVault(addNotification, user?.uid || null);
 
-    // Navigation Guard - Only redirect for Vault Operator and Hyperliquid Dealer when no vault exists
+    // Navigation Guard - Protect ALL pages when vault is locked (except VAULT, PRIVACY, TERMS)
     const hasVault = !!(vault.publicKey || vault.hlPublicKey);
     useEffect(() => {
-        // Only redirect from Vault Operator and Hyperliquid Dealer pages when vault is not unlocked
-        const protectedTabs = [
-            AppTab.AGENT,
-            AppTab.VAULT_DEALER,
-            AppTab.DEALER_DASHBOARD,
-            AppTab.DEALER_THINKING,
-            AppTab.DEALER_CONFIG
+        // Tabs that are ALLOWED when vault is locked (whitelist approach)
+        const unprotectedTabs = [
+            AppTab.VAULT,       // Vault page is where user unlocks
+            AppTab.PRIVACY,     // Legal pages should always be accessible
+            AppTab.TERMS
         ];
 
-        // If on a protected tab and vault is locked (but exists), redirect to Vault page
-        if (protectedTabs.includes(activeTab) && !vault.isUnlocked && hasVault) {
+        // If vault exists but is locked and user is NOT on an allowed page, redirect to Vault
+        if (hasVault && !vault.isUnlocked && !unprotectedTabs.includes(activeTab)) {
             setActiveTab(AppTab.VAULT);
         }
     }, [activeTab, vault.isUnlocked, hasVault]);
