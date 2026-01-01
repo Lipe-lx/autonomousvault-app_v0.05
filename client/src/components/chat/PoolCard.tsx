@@ -95,7 +95,7 @@ export const PoolCard: React.FC<PoolCardProps> = ({
         )}
 
         {/* APY */}
-        {data.apy !== undefined && !compact && (
+        {data.apy !== undefined && (
           <div className="flex items-center gap-1.5">
             <Percent size={12} className="text-[#34d399]" />
             <div>
