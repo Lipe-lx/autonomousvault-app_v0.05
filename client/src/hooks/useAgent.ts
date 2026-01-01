@@ -1587,23 +1587,68 @@ ${recentFills.map((f: any) => {
                 }
             }
 
-            setMessages(prev => [...prev, {
+            const modelMessage: AgentMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'model',
                 content: modelText || defaultText,
                 timestamp: Date.now(),
                 toolResults: toolResults
-            }]);
+            };
+
+            setMessages(prev => {
+                const updated = [...prev, modelMessage];
+
+                // Auto-save conversation after model response (including toolResults)
+                if (vault.isUnlocked && password && activeConversationId) {
+                    const conv: Conversation = {
+                        id: activeConversationId,
+                        title: prev.length > 0 && prev[0].role === 'user' 
+                            ? ConversationService.generateTitle(prev[0].content) 
+                            : 'Conversation',
+                        lastMessage: modelMessage.content.substring(0, 50),
+                        timestamp: Date.now(),
+                        messages: updated
+                    };
+                    ConversationService.saveConversation(conv, password).catch(err => 
+                        console.error("Auto-save after model response failed", err)
+                    );
+                }
+
+                return updated;
+            });
 
         } catch (e: any) {
             console.error("AI Error:", e);
-            setMessages(prev => [...prev, {
+            
+            const errorMessage: AgentMessage = {
                 id: Date.now().toString(),
                 role: 'model',
                 content: "Sorry, I encountered a system error while processing that request.",
                 toolResults: [{ type: 'error', title: 'System Error', details: e.message }],
                 timestamp: Date.now()
-            }]);
+            };
+
+            setMessages(prev => {
+                const updated = [...prev, errorMessage];
+
+                // Auto-save even on error so user sees what happened
+                if (vault.isUnlocked && password && activeConversationId) {
+                    const conv: Conversation = {
+                        id: activeConversationId,
+                        title: prev.length > 0 && prev[0].role === 'user' 
+                            ? ConversationService.generateTitle(prev[0].content) 
+                            : 'Conversation',
+                        lastMessage: errorMessage.content.substring(0, 50),
+                        timestamp: Date.now(),
+                        messages: updated
+                    };
+                    ConversationService.saveConversation(conv, password).catch(err => 
+                        console.error("Auto-save after error response failed", err)
+                    );
+                }
+
+                return updated;
+            });
         } finally {
             setIsAiProcessing(false);
             setAiStatus('');
