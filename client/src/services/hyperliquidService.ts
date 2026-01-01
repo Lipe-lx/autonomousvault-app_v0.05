@@ -520,6 +520,32 @@ export class HyperliquidService {
     }
 
     /**
+     * Get user's ledger updates (deposits and withdrawals)
+     * @param address User wallet address
+     */
+    async getUserLedgerUpdates(address: string): Promise<any[]> {
+        try {
+            const response = await this.throttledFetch(
+                INFO_API_URL,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'userNonFundingLedgerUpdates', user: address })
+                },
+                `ledgerUpdates:${address}`,
+                this.CACHE_TTL_MS,
+                'default'
+            );
+            
+            if (!response.ok) throw new Error(`Failed to fetch ledger updates: ${response.statusText}`);
+            return await response.json();
+        } catch (e) {
+            console.error("Hyperliquid Ledger Updates Error:", e);
+            return [];
+        }
+    }
+
+    /**
      * Get historical candle (OHLCV) data for a coin
      * @param coin - Coin symbol (e.g., "BTC", "ETH", "SOL")
      * @param interval - Candle interval: "1m", "5m", "15m", "1h", "4h", "1d"

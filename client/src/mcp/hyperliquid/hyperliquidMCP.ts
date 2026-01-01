@@ -19,6 +19,10 @@ export const hyperliquidMCP = {
         return await hyperliquidService.getUserFills(address);
     },
 
+    async getUserLedgerUpdates(address: string) {
+        return await hyperliquidService.getUserLedgerUpdates(address);
+    },
+
     async createOrder(
         wallet: ethers.Wallet,
         coin: string,

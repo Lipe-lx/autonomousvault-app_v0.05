@@ -15,6 +15,14 @@ import {
     TimeFrame
 } from '../types/solanaLiquidityTypes';
 import { LPOperationScope, SemanticType, LPAuditEntry } from '../types/solanaLPTypes';
+import { 
+    StructuredResult, 
+    PoolItem, 
+    VolatilityItem,
+    RangeSuggestion,
+    ProtocolId,
+    getPoolUrl 
+} from '../types/structuredResponseTypes';
 
 // Semantic types for visual differentiation
 export type { SemanticType } from '../types/solanaLPTypes';
@@ -26,6 +34,8 @@ export interface ToolResult {
     details: string;
     rationale?: string;
     tx?: string;
+    // Structured data for rich card rendering
+    structuredData?: StructuredResult;
     // For confirmation flow
     requiresConfirmation?: boolean;
     confirmationData?: {
@@ -100,7 +110,36 @@ export async function handleLPToolCall(
             // Log to audit
             solanaDealerStore.addLog('INFO', `Searched pools: ${pools.length} results`, { filters });
 
-            return { type: 'success', semanticType: 'analysis', title: 'Liquidity Pools', details };
+            // Build structured data for rich cards
+            const poolItems: PoolItem[] = pools.map(pool => {
+                const protocolId: ProtocolId = pool.protocol.includes('meteora') ? 'meteora' : 'raydium';
+                return {
+                    type: 'pool' as const,
+                    protocol: protocolId,
+                    name: pool.name,
+                    tokenA: { symbol: pool.tokenA.symbol, mint: pool.tokenA.mint },
+                    tokenB: { symbol: pool.tokenB.symbol, mint: pool.tokenB.mint },
+                    volume24h: pool.volume['24h'] || 0,
+                    tvl: pool.tvl,
+                    apy: pool.apy || 0,
+                    feeBps: pool.feeBps,
+                    poolAddress: pool.address,
+                    poolUrl: getPoolUrl(protocolId, pool.address),
+                    currentPrice: pool.currentPrice
+                };
+            });
+
+            return { 
+                type: 'success', 
+                semanticType: 'analysis', 
+                title: 'Liquidity Pools', 
+                details,
+                structuredData: {
+                    resultType: 'pools',
+                    items: poolItems,
+                    summary: `Found ${pools.length} pools`
+                }
+            };
         } catch (err: any) {
             return { type: 'error', semanticType: 'analysis', title: 'Search Error', details: err.message };
         }
@@ -172,7 +211,36 @@ export async function handleLPToolCall(
                 details += `${idx + 1}. [${protocol}] ${r.pool.name} - ${value}\n`;
             });
 
-            return { type: 'success', title: `Top Pools by ${args.criteria.toUpperCase()}`, details };
+            // Build structured data for rich cards
+            const poolItems: PoolItem[] = sorted.map(r => {
+                const protocolId: ProtocolId = r.pool.protocol.includes('meteora') ? 'meteora' : 'raydium';
+                return {
+                    type: 'pool' as const,
+                    protocol: protocolId,
+                    name: r.pool.name,
+                    tokenA: { symbol: r.pool.tokenA.symbol, mint: r.pool.tokenA.mint },
+                    tokenB: { symbol: r.pool.tokenB.symbol, mint: r.pool.tokenB.mint },
+                    volume24h: r.pool.volume['24h'] || 0,
+                    tvl: r.pool.tvl,
+                    apy: r.pool.apy || 0,
+                    feeBps: r.pool.feeBps,
+                    poolAddress: r.pool.address,
+                    poolUrl: getPoolUrl(protocolId, r.pool.address),
+                    currentPrice: r.pool.currentPrice
+                };
+            });
+
+            return { 
+                type: 'success', 
+                title: `Top Pools by ${args.criteria.toUpperCase()}`, 
+                details,
+                structuredData: {
+                    resultType: 'pools',
+                    items: poolItems,
+                    summary: `Top ${sorted.length} pools by ${args.criteria}`,
+                    title: `Top Pools by ${args.criteria.toUpperCase()}`
+                }
+            };
         } catch (err: any) {
             return { type: 'error', title: 'Ranking Error', details: err.message };
         }
@@ -650,6 +718,81 @@ Tighter ranges = higher capital efficiency, more active management needed`
     // VOLATILITY & RANGE SUGGESTIONS
     // =============================================
 
+    if (name === 'getTopVolatilityPools') {
+        try {
+            setAiStatus('Calculating volatility for all pools...');
+            
+            const limit = args.limit || 10;
+            const days = args.days || 7;
+            const minTVL = args.minTVL || 0;
+            const protocol = args.protocol as 'meteora' | 'raydium' | undefined;
+            
+            const results = await volatilityService.getTopPoolsByVolatility(limit, days, minTVL, protocol);
+            
+            if (results.length === 0) {
+                return { 
+                    type: 'info', 
+                    title: 'No Pools Found', 
+                    details: 'No pools with volatility data found in database.\n\nThis could mean:\n- No pools have been synced yet\n- No historical data available for volatility calculation\n\nData sync runs every 5 minutes.' 
+                };
+            }
+
+            let details = `📊 **Top ${results.length} Pools by Volatility**\n\n`;
+            details += `| # | Pool | Protocol | Daily Vol | Ann. Vol | Price Δ 24h | TVL |\n`;
+            details += `|---|------|----------|-----------|----------|-------------|-----|\n`;
+            
+            // Build structured volatility items
+            const volatilityItems: VolatilityItem[] = [];
+            
+            results.forEach((r, idx) => {
+                const protocolLabel = r.pool.protocol.includes('meteora') ? 'MET' : 'RAY';
+                const protocolId: ProtocolId = r.pool.protocol.includes('meteora') ? 'meteora' : 'raydium';
+                const tvl = r.pool.tvl >= 1000 ? `$${(r.pool.tvl / 1000).toFixed(1)}K` : `$${r.pool.tvl.toFixed(0)}`;
+                const priceChange = r.volatility.priceChange24h >= 0 ? `+${r.volatility.priceChange24h.toFixed(2)}%` : `${r.volatility.priceChange24h.toFixed(2)}%`;
+                
+                details += `| ${idx + 1} | ${r.pool.name.slice(0, 15)} | ${protocolLabel} | ${r.volatility.volatilityDaily.toFixed(2)}% | ${r.volatility.volatilityAnnualized.toFixed(1)}% | ${priceChange} | ${tvl} |\n`;
+                
+                volatilityItems.push({
+                    type: 'volatility' as const,
+                    poolName: r.pool.name,
+                    poolAddress: r.pool.address,
+                    protocol: protocolId,
+                    currentPrice: r.volatility.currentPrice,
+                    volatilityDaily: r.volatility.volatilityDaily,
+                    volatilityAnnualized: r.volatility.volatilityAnnualized,
+                    priceChange24h: r.volatility.priceChange24h,
+                    priceChange7d: r.volatility.priceChange7d,
+                    tvl: r.pool.tvl,
+                    confidence: r.volatility.confidence as 'high' | 'medium' | 'low',
+                    dataPoints: r.volatility.dataPoints
+                });
+            });
+            
+            details += `\n*Volatility calculated from ${days} days of historical data.*`;
+            if (minTVL > 0) {
+                details += `\n*Filtered to pools with TVL ≥ $${minTVL.toLocaleString()}*`;
+            }
+
+            // Log to audit
+            solanaDealerStore.addLog('INFO', `Top volatility pools: ${results.length} results`, { limit, days, minTVL, protocol });
+
+            return { 
+                type: 'success', 
+                semanticType: 'analysis',
+                title: 'Top Pools by Volatility', 
+                details,
+                structuredData: {
+                    resultType: 'volatility',
+                    items: volatilityItems,
+                    summary: `Top ${results.length} pools by volatility`,
+                    title: 'Pools Ranked by Volatility'
+                }
+            };
+        } catch (err: any) {
+            return { type: 'error', title: 'Volatility Error', details: err.message };
+        }
+    }
+
     if (name === 'getPoolVolatility') {
         try {
             setAiStatus('Calculating pool volatility...');
@@ -674,20 +817,52 @@ Tighter ranges = higher capital efficiency, more active management needed`
                 details += `| Pool | Protocol | TVL | Daily Vol | Ann. Vol | Price |\n`;
                 details += `|------|----------|-----|-----------|----------|-------|\n`;
                 
+                // Build structured volatility items
+                const volatilityItems: VolatilityItem[] = [];
+                
                 for (const pool of pools) {
                     const volatility = await volatilityService.calculateVolatility(pool.address, args.days || 7);
                     const protocol = pool.protocol.includes('meteora') ? 'MET' : 'RAY';
+                    const protocolId: ProtocolId = pool.protocol.includes('meteora') ? 'meteora' : 'raydium';
                     const dailyVol = volatility.error ? 'N/A' : `${volatility.volatilityDaily.toFixed(2)}%`;
                     const annVol = volatility.error ? 'N/A' : `${volatility.volatilityAnnualized.toFixed(1)}%`;
                     const price = volatility.currentPrice > 0 ? `$${volatility.currentPrice.toFixed(4)}` : 'N/A';
                     const tvl = pool.tvl >= 1000 ? `$${(pool.tvl / 1000).toFixed(1)}K` : `$${pool.tvl.toFixed(0)}`;
                     
                     details += `| ${pool.name.slice(0, 15)} | ${protocol} | ${tvl} | ${dailyVol} | ${annVol} | ${price} |\n`;
+                    
+                    // Add to structured items if volatility was calculated
+                    if (!volatility.error) {
+                        volatilityItems.push({
+                            type: 'volatility' as const,
+                            poolName: pool.name,
+                            poolAddress: pool.address,
+                            protocol: protocolId,
+                            currentPrice: volatility.currentPrice,
+                            volatilityDaily: volatility.volatilityDaily,
+                            volatilityAnnualized: volatility.volatilityAnnualized,
+                            priceChange24h: volatility.priceChange24h,
+                            priceChange7d: volatility.priceChange7d,
+                            tvl: pool.tvl,
+                            confidence: volatility.confidence as 'high' | 'medium' | 'low',
+                            dataPoints: volatility.dataPoints
+                        });
+                    }
                 }
                 
                 details += `\n*Note: Volatility calculated from ${args.days || 7} days of historical data.*`;
                 
-                return { type: 'success', title: `${args.tokenA}/${args.tokenB} Volatility`, details };
+                return { 
+                    type: 'success', 
+                    title: `${args.tokenA}/${args.tokenB} Volatility`, 
+                    details,
+                    structuredData: volatilityItems.length > 0 ? {
+                        resultType: 'volatility',
+                        items: volatilityItems,
+                        summary: `Found ${pools.length} pools for ${args.tokenA}/${args.tokenB}`,
+                        title: `${args.tokenA}/${args.tokenB} Volatility Analysis`
+                    } : undefined
+                };
             }
             
             // Single pool by address
@@ -898,7 +1073,8 @@ export function isLPTool(name: string): boolean {
         'estimatePoolCreationCost',
         // Volatility tools
         'getPoolVolatility',
-        'suggestOptimalRangeByVolatility'
+        'suggestOptimalRangeByVolatility',
+        'getTopVolatilityPools'
     ];
     return lpToolNames.includes(name);
 }

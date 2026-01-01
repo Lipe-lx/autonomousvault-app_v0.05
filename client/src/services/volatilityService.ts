@@ -318,6 +318,120 @@ class VolatilityService {
         }
     }
 
+    /**
+     * Get all pools from Supabase with recent snapshots
+     */
+    async getAllPoolsFromDatabase(
+        minTVL: number = 0,
+        protocol?: 'meteora' | 'raydium',
+        limit: number = 100
+    ): Promise<{ address: string; name: string; protocol: string; tvl: number }[]> {
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+            console.warn('[VolatilityService] Supabase client not available');
+            return [];
+        }
+
+        try {
+            let query = supabase
+                .from('liquidity_pools')
+                .select(`
+                    address,
+                    name,
+                    protocol,
+                    liquidity_pool_snapshots (
+                        tvl,
+                        timestamp
+                    )
+                `)
+                .order('timestamp', { foreignTable: 'liquidity_pool_snapshots', ascending: false })
+                .limit(1, { foreignTable: 'liquidity_pool_snapshots' });
+
+            // Filter by protocol if specified
+            if (protocol) {
+                query = query.ilike('protocol', `%${protocol}%`);
+            }
+
+            const { data: pools, error } = await query.limit(limit);
+
+            if (error) {
+                console.error('[VolatilityService] Error fetching pools:', error);
+                return [];
+            }
+
+            // Map and filter by TVL
+            const result = (pools || [])
+                .map((p: any) => ({
+                    address: p.address,
+                    name: p.name,
+                    protocol: p.protocol,
+                    tvl: p.liquidity_pool_snapshots?.[0]?.tvl || 0
+                }))
+                .filter(p => p.tvl >= minTVL)
+                .sort((a, b) => b.tvl - a.tvl);
+
+            return result;
+        } catch (error) {
+            console.error('[VolatilityService] Error in getAllPoolsFromDatabase:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Get top pools ranked by volatility (highest first)
+     * @param limit Number of pools to return (default 10)
+     * @param days Number of days for volatility calculation (default 7)
+     * @param minTVL Minimum TVL filter (default 0)
+     * @param protocol Optional protocol filter ('meteora' or 'raydium')
+     */
+    async getTopPoolsByVolatility(
+        limit: number = 10,
+        days: number = 7,
+        minTVL: number = 0,
+        protocol?: 'meteora' | 'raydium'
+    ): Promise<{ pool: { address: string; name: string; protocol: string; tvl: number }; volatility: VolatilityResult }[]> {
+        try {
+            // Get all pools from database
+            const pools = await this.getAllPoolsFromDatabase(minTVL, protocol, 50);
+            
+            if (pools.length === 0) {
+                console.warn('[VolatilityService] No pools found in database');
+                return [];
+            }
+
+            // Calculate volatility for each pool (in batches to avoid overwhelming the database)
+            const results: { pool: typeof pools[0]; volatility: VolatilityResult }[] = [];
+            const batchSize = 5;
+            
+            for (let i = 0; i < pools.length; i += batchSize) {
+                const batch = pools.slice(i, i + batchSize);
+                const batchResults = await Promise.all(
+                    batch.map(async (pool) => {
+                        const volatility = await this.calculateVolatility(pool.address, days);
+                        volatility.poolName = pool.name;
+                        return { pool, volatility };
+                    })
+                );
+                results.push(...batchResults);
+            }
+
+            // Filter out pools with errors or no volatility data
+            const validResults = results.filter(r => 
+                !r.volatility.error && 
+                r.volatility.volatilityDaily > 0
+            );
+
+            // Sort by daily volatility (highest first)
+            validResults.sort((a, b) => b.volatility.volatilityDaily - a.volatility.volatilityDaily);
+
+            // Return top N
+            return validResults.slice(0, limit);
+        } catch (error: any) {
+            console.error('[VolatilityService] Error in getTopPoolsByVolatility:', error);
+            return [];
+        }
+    }
+
     // ============================================
     // HELPER METHODS
     // ============================================

@@ -62,13 +62,36 @@ export function getLPToolDeclarations(): FunctionDeclaration[] {
         parameters: {
             type: Type.OBJECT,
             properties: {
-                criteria: { type: Type.STRING, description: 'Ranking criteria: "volume", "apy", or "tvl"' },
+        criteria: { type: Type.STRING, description: 'Ranking criteria: "volume", "apy", or "tvl"' },
                 volumeTimeframe: { type: Type.STRING, description: 'Timeframe for volume criteria: "5m", "1h", "24h", "7d"' },
                 minTVL: { type: Type.NUMBER, description: 'Minimum TVL filter in USD' },
                 protocol: { type: Type.STRING, description: 'Filter by protocol: "meteora", "raydium", or empty for all' },
                 limit: { type: Type.NUMBER, description: 'Number of results (default 10)' }
             },
             required: ['criteria']
+        }
+    };
+
+    const getTopVolatilityPoolsTool: FunctionDeclaration = {
+        name: 'getTopVolatilityPools',
+        description: `Get ranked list of liquidity pools by volatility (highest first).
+        
+        Use this when user asks for:
+        - "pools com maior volatilidade"
+        - "most volatile pools"
+        - "quais pools estão mais voláteis?"
+        - "ranking de volatilidade"
+        - "pools mais arriscadas"
+        
+        Returns pools sorted by daily volatility percentage, including price changes and confidence levels.`,
+        parameters: {
+            type: Type.OBJECT,
+            properties: {
+                limit: { type: Type.NUMBER, description: 'Number of results (default 10)' },
+                days: { type: Type.NUMBER, description: 'Days for volatility calculation (default 7)' },
+                minTVL: { type: Type.NUMBER, description: 'Minimum TVL in USD (optional filter)' },
+                protocol: { type: Type.STRING, description: 'Filter by protocol: "meteora" or "raydium" (optional)' }
+            }
         }
     };
 
@@ -342,6 +365,7 @@ export function getLPToolDeclarations(): FunctionDeclaration[] {
         searchPoolsTool,
         getPoolDetailsTool,
         getTopPoolsTool,
+        getTopVolatilityPoolsTool,
         comparePoolsTool,
         getPoolHistoryTool,
         // Portfolio & Positions

@@ -11,6 +11,13 @@ import { hyperliquidService } from '../services/hyperliquidService';
 import { MOCK_POOL_PRICES } from '../constants';
 import { dealerStore } from '../state/dealerStore';
 import { handleLPToolCall, isLPTool } from '../handlers/lpToolHandler';
+import { 
+    StructuredResult, 
+    BalanceItem, 
+    TransactionItem,
+    PositionItem,
+    NetworkId
+} from '../types/structuredResponseTypes';
 
 import { StorageService } from '../services/storageService';
 
@@ -62,8 +69,10 @@ export const useAgent = (
         }
     };
 
-    const handleSendMessage = async () => {
-        if (!inputMessage.trim()) return;
+    const handleSendMessage = async (directMessage?: string) => {
+        // Use direct message (from suggestion click) or input field
+        const messageToSend = directMessage || inputMessage;
+        if (!messageToSend.trim()) return;
 
         const apiKey = getApiKey();
         if (!apiKey) {
@@ -74,7 +83,7 @@ export const useAgent = (
         const userMsg: AgentMessage = {
             id: Date.now().toString(),
             role: 'user',
-            content: inputMessage,
+            content: messageToSend,
             timestamp: Date.now()
         };
 
@@ -265,7 +274,8 @@ ${recentFills.map((f: any) => {
           **YOUR IDENTITY:**
           - Solana Vault Address: ${vault.publicKey || 'UNKNOWN'}
           - Hyperliquid Vault Address: ${vault.hlPublicKey || 'NOT CREATED'}
-          - Your Owner's Wallet: ${vault.ownerPublicKey || 'NOT CONNECTED'}
+          - Solana Owner's Wallet: ${vault.ownerPublicKey || 'NOT CONNECTED'}
+          - Hyperliquid Owner's Wallet: ${vault.hlOwnerPublicKey || 'NOT CONNECTED'}
           - Current Vault SOL Balance: ${vault.solBalance.toFixed(4)} SOL
           
           ${dealerContext}
@@ -325,7 +335,8 @@ ${recentFills.map((f: any) => {
           - Network: Hyperliquid Testnet
           - Fee: $1 USDC (fixed)
           - Time: ~5 minutes
-          - Destination: Owner's wallet on Hyperliquid Testnet
+          - Destination: Owner's wallet on Hyperliquid Testnet (MUST be EVM address starting with 0x)
+          - Check Status: Use 'getHLTransfers' to see pending/completed withdrawals
           - Minimum: Amount must be > $1 to cover fee
           
           **BEFORE ANY TRANSFER, YOU MUST:**
@@ -474,7 +485,9 @@ ${recentFills.map((f: any) => {
           - 'updateHLLeverage' - Change leverage for an asset (automatic with createHLOrder)
           - 'closeHLPosition' - Close an open position
           - 'cancelHLOrder' - Cancel a pending order
+          - 'cancelHLOrder' - Cancel a pending order
           - 'withdrawFromHL' - Withdraw USDC to Owner's wallet on Hyperliquid Testnet
+          - 'getHLTransfers' - Check status of deposits and withdrawals (Real-time status)
 
           
           **TASK SCHEDULING (IMPORTANT):**
@@ -683,23 +696,52 @@ ${recentFills.map((f: any) => {
                             // Check if it's SOL
                             if (requestedToken.toUpperCase() === 'SOL' || tokenMint === 'So11111111111111111111111111111111111111112') {
                                 const bal = vault.solBalance.toFixed(4);
+                                const usdValue = vault.solBalance * MOCK_POOL_PRICES.SOL;
+                                
+                                const balanceItem: BalanceItem = {
+                                    type: 'balance',
+                                    network: 'solana',
+                                    token: { symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112' },
+                                    amount: vault.solBalance,
+                                    valueUsd: usdValue
+                                };
+                                
                                 toolResults.push({
                                     type: 'success',
                                     title: 'Balance Check',
-                                    details: `SOL Balance: ${bal} SOL (~$${(vault.solBalance * MOCK_POOL_PRICES.SOL).toFixed(2)})`
+                                    details: `SOL Balance: ${bal} SOL (~$${usdValue.toFixed(2)})`,
+                                    structuredData: {
+                                        resultType: 'balance',
+                                        items: [balanceItem],
+                                        title: 'SOL Balance'
+                                    }
                                 });
                             } else {
                                 // Find the token in assets
                                 const asset = vault.assets?.find((a: any) => a.mint === tokenMint);
                                 if (asset) {
-                                    const amount = (parseFloat(asset.amount) / Math.pow(10, asset.decimals)).toFixed(4);
+                                    const amount = parseFloat(asset.amount) / Math.pow(10, asset.decimals);
                                     const usdValue = asset.symbol !== 'UNKNOWN'
-                                        ? ` (~$${((parseFloat(asset.amount) / Math.pow(10, asset.decimals)) * (MOCK_POOL_PRICES[asset.symbol] || 0)).toFixed(2)})`
-                                        : '';
+                                        ? amount * (MOCK_POOL_PRICES[asset.symbol] || 0)
+                                        : 0;
+                                    
+                                    const balanceItem: BalanceItem = {
+                                        type: 'balance',
+                                        network: 'solana',
+                                        token: { symbol: asset.symbol, mint: asset.mint },
+                                        amount: amount,
+                                        valueUsd: usdValue
+                                    };
+                                    
                                     toolResults.push({
                                         type: 'success',
                                         title: 'Balance Check',
-                                        details: `${asset.name} (${asset.symbol}): ${amount}${usdValue}`
+                                        details: `${asset.name} (${asset.symbol}): ${amount.toFixed(4)}${usdValue > 0 ? ` (~$${usdValue.toFixed(2)})` : ''}`,
+                                        structuredData: {
+                                            resultType: 'balance',
+                                            items: [balanceItem],
+                                            title: `${asset.symbol} Balance`
+                                        }
                                     });
                                 } else {
                                     toolResults.push({
@@ -712,27 +754,50 @@ ${recentFills.map((f: any) => {
                         } else {
                             // Show all balances
                             const solBal = vault.solBalance.toFixed(4);
-                            const solUsd = (vault.solBalance * MOCK_POOL_PRICES.SOL).toFixed(2);
+                            const solUsd = vault.solBalance * MOCK_POOL_PRICES.SOL;
 
-                            let balanceDetails = `SOL: ${solBal} SOL (~$${solUsd})`;
+                            let balanceDetails = `SOL: ${solBal} SOL (~$${solUsd.toFixed(2)})`;
+                            
+                            // Build structured balance items
+                            const balanceItems: BalanceItem[] = [{
+                                type: 'balance',
+                                network: 'solana',
+                                token: { symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112' },
+                                amount: vault.solBalance,
+                                valueUsd: solUsd
+                            }];
 
                             // Add all tokens
                             const tokens = (vault.assets || []).filter((a: any) => !a.isNft);
                             if (tokens.length > 0) {
                                 balanceDetails += '\n\nTokens:';
                                 tokens.forEach((token: any) => {
-                                    const amount = (parseFloat(token.amount) / Math.pow(10, token.decimals)).toFixed(4);
+                                    const amount = parseFloat(token.amount) / Math.pow(10, token.decimals);
                                     const usdValue = token.symbol !== 'UNKNOWN'
-                                        ? ` (~$${((parseFloat(token.amount) / Math.pow(10, token.decimals)) * (MOCK_POOL_PRICES[token.symbol] || 0)).toFixed(2)})`
-                                        : '';
-                                    balanceDetails += `\n• ${token.name} (${token.symbol}): ${amount}${usdValue}`;
+                                        ? amount * (MOCK_POOL_PRICES[token.symbol] || 0)
+                                        : 0;
+                                    balanceDetails += `\n• ${token.name} (${token.symbol}): ${amount.toFixed(4)}${usdValue > 0 ? ` (~$${usdValue.toFixed(2)})` : ''}`;
+                                    
+                                    balanceItems.push({
+                                        type: 'balance',
+                                        network: 'solana',
+                                        token: { symbol: token.symbol, mint: token.mint },
+                                        amount: amount,
+                                        valueUsd: usdValue
+                                    });
                                 });
                             }
 
                             toolResults.push({
                                 type: 'success',
                                 title: 'Balance Check',
-                                details: balanceDetails
+                                details: balanceDetails,
+                                structuredData: {
+                                    resultType: 'balances',
+                                    items: balanceItems,
+                                    title: 'Solana Vault Balances',
+                                    summary: `${balanceItems.length} asset${balanceItems.length > 1 ? 's' : ''}`
+                                }
                             });
                         }
 
@@ -753,11 +818,33 @@ ${recentFills.map((f: any) => {
 
                                 const sig = await solanaService.transferSol(kp, vault.ownerPublicKey, args.amount);
                                 addActivityLog('Transfer', `Withdrew ${args.amount} SOL to Owner`, sig);
+                                
+                                const txItem: TransactionItem = {
+                                    type: 'transaction',
+                                    network: 'solana',
+                                    status: 'success',
+                                    title: 'Withdraw Executed',
+                                    description: 'SOL transferred to Owner wallet',
+                                    txHash: sig,
+                                    explorerUrl: `https://solscan.io/tx/${sig}`,
+                                    details: {
+                                        from: vault.publicKey,
+                                        to: vault.ownerPublicKey,
+                                        amount: args.amount,
+                                        token: 'SOL'
+                                    }
+                                };
+                                
                                 toolResults.push({
                                     type: 'success',
                                     title: 'Withdraw Executed',
                                     details: `Sent ${args.amount} SOL to Owner`,
-                                    tx: sig
+                                    tx: sig,
+                                    structuredData: {
+                                        resultType: 'transaction',
+                                        items: [txItem],
+                                        title: 'Withdraw Completed'
+                                    }
                                 });
                                 refreshBalance(vault.publicKey!);
                             } catch (err: any) {
@@ -782,6 +869,7 @@ ${recentFills.map((f: any) => {
                                 // Find decimals for this token
                                 const asset = vault.assets?.find((a: any) => a.mint === mint);
                                 const decimals = asset ? asset.decimals : 9; // Default to 9 if not found (risky but fallback)
+                                const tokenSymbol = asset?.symbol || args.tokenMint;
 
                                 // SECURITY: FORCE DESTINATION TO BE OWNER
                                 const sig = await solanaService.transferToken(
@@ -792,13 +880,34 @@ ${recentFills.map((f: any) => {
                                     decimals
                                 );
 
-                                addActivityLog('Transfer', `Sent ${args.amount} ${args.tokenMint} to Owner`, sig);
+                                addActivityLog('Transfer', `Sent ${args.amount} ${tokenSymbol} to Owner`, sig);
+
+                                const txItem: TransactionItem = {
+                                    type: 'transaction',
+                                    network: 'solana',
+                                    status: 'success',
+                                    title: 'Transfer Executed',
+                                    description: `${tokenSymbol} transferred to Owner wallet`,
+                                    txHash: sig,
+                                    explorerUrl: `https://solscan.io/tx/${sig}`,
+                                    details: {
+                                        from: vault.publicKey,
+                                        to: vault.ownerPublicKey,
+                                        amount: args.amount,
+                                        token: tokenSymbol
+                                    }
+                                };
 
                                 toolResults.push({
                                     type: 'success',
                                     title: 'Transfer Executed',
-                                    details: `Sent ${args.amount} of ${args.tokenMint} to Owner`,
-                                    tx: sig
+                                    details: `Sent ${args.amount} of ${tokenSymbol} to Owner`,
+                                    tx: sig,
+                                    structuredData: {
+                                        resultType: 'transaction',
+                                        items: [txItem],
+                                        title: 'Transfer Completed'
+                                    }
                                 });
                                 refreshBalance(vault.publicKey!);
                             } catch (err: any) {
@@ -830,22 +939,55 @@ ${recentFills.map((f: any) => {
 
                                 addActivityLog('Swap', `Swapped ${args.amount} ${args.inputToken} -> ${args.outputToken}`, sig);
 
+                                const txItem: TransactionItem = {
+                                    type: 'transaction',
+                                    network: 'solana',
+                                    status: 'success',
+                                    title: 'Swap Executed',
+                                    description: `${args.inputToken} → ${args.outputToken}`,
+                                    txHash: sig,
+                                    explorerUrl: `https://solscan.io/tx/${sig}`,
+                                    details: {
+                                        amount: args.amount,
+                                        token: `${args.inputToken} → ${args.outputToken}`
+                                    }
+                                };
+
                                 toolResults.push({
                                     type: 'success',
                                     title: 'Swap Executed',
                                     details: `Swapped ${args.amount} ${args.inputToken} for ${args.outputToken}`,
-                                    tx: sig
+                                    tx: sig,
+                                    structuredData: {
+                                        resultType: 'transaction',
+                                        items: [txItem],
+                                        title: 'Swap Completed'
+                                    }
                                 });
                                 if (vault.publicKey) refreshBalance(vault.publicKey);
                             } catch (err: any) {
                                 // Handle timeout errors gracefully
                                 if (err.message?.includes('timeout') || err.message?.includes('expired')) {
                                     console.warn(`[Swap] ⚠️  Swap confirmation timeout, but transaction may have succeeded. Check manually.`);
+                                    
+                                    const txItem: TransactionItem = {
+                                        type: 'transaction',
+                                        network: 'solana',
+                                        status: 'pending',
+                                        title: 'Swap Executed (Slow Confirmation)',
+                                        description: 'Transaction sent but confirmation is slow'
+                                    };
+                                    
                                     toolResults.push({
                                         type: 'success', // Mark as success with warning
                                         title: 'Swap Executed (Slow Confirmation)',
                                         details: `Transaction sent but confirmation is slow. Please verify on explorer.`,
-                                        tx: 'Check Explorer'
+                                        tx: 'Check Explorer',
+                                        structuredData: {
+                                            resultType: 'transaction',
+                                            items: [txItem],
+                                            title: 'Swap Pending Confirmation'
+                                        }
                                     });
                                     refreshBalance(vault.publicKey!);
                                 } else {
@@ -1058,12 +1200,12 @@ ${recentFills.map((f: any) => {
                                 console.log('[HL Debug] FULL USER STATE:', JSON.stringify(userState, null, 2));
 
                                 const accountValue = parseFloat(userState.marginSummary.accountValue);
-                                const withdrawable = parseFloat(userState.withdrawable).toFixed(2);
-                                const balance = accountValue.toFixed(2);
+                                const withdrawable = parseFloat(userState.withdrawable);
                                 const positions = userState.assetPositions.filter((p: any) => parseFloat(p.position.szi) !== 0);
 
-                                let details = `USDC Account Value: $${balance}`;
-                                details += `\nWithdrawable: $${withdrawable}`;
+                                // Build text fallback
+                                let details = `USDC Account Value: $${accountValue.toFixed(2)}`;
+                                details += `\nWithdrawable: $${withdrawable.toFixed(2)}`;
                                 if (positions.length > 0) {
                                     details += '\n\nOpen Positions:';
                                     positions.forEach((p: any) => {
@@ -1073,10 +1215,51 @@ ${recentFills.map((f: any) => {
                                     details += '\nNo open positions.';
                                 }
 
+                                // Build structured data
+                                const balanceItem: BalanceItem = {
+                                    type: 'balance',
+                                    network: 'hyperliquid',
+                                    token: { symbol: 'USDC' },
+                                    amount: accountValue,
+                                    valueUsd: accountValue
+                                };
+
+                                const positionItems: PositionItem[] = positions.map((p: any) => {
+                                    const size = parseFloat(p.position.szi);
+                                    const entryPrice = parseFloat(p.position.entryPx);
+                                    const unrealizedPnl = parseFloat(p.position.unrealizedPnl || 0);
+                                    const leverage = parseFloat(p.position.leverage?.value || 1);
+                                    const marginUsed = parseFloat(p.position.marginUsed || 0);
+                                    const liquidationPx = parseFloat(p.position.liquidationPx || 0);
+                                    
+                                    return {
+                                        type: 'position' as const,
+                                        protocol: 'hyperliquid' as const,
+                                        coin: p.position.coin,
+                                        direction: size > 0 ? 'long' as const : 'short' as const,
+                                        size: Math.abs(size),
+                                        entryPrice: entryPrice,
+                                        valueUsd: Math.abs(size) * entryPrice,
+                                        leverage: leverage,
+                                        marginUsed: marginUsed,
+                                        liquidationPrice: liquidationPx > 0 ? liquidationPx : undefined,
+                                        pnl: {
+                                            value: unrealizedPnl,
+                                            percent: (unrealizedPnl / (marginUsed || 1)) * 100
+                                        }
+                                    };
+                                });
+
                                 toolResults.push({
                                     type: 'success',
                                     title: 'Hyperliquid Balance',
-                                    details: details
+                                    details: details,
+                                    structuredData: {
+                                        resultType: positions.length > 0 ? 'positions' : 'balance',
+                                        items: positions.length > 0 ? [balanceItem, ...positionItems] : [balanceItem],
+                                        title: 'Hyperliquid Account',
+                                        summary: positions.length > 0 ? `$${accountValue.toFixed(2)} • ${positions.length} position${positions.length > 1 ? 's' : ''}` : `$${accountValue.toFixed(2)}`
+                                    }
                                 });
                             }
                         } catch (err: any) {
@@ -1265,11 +1448,27 @@ ${recentFills.map((f: any) => {
                                     ? ` [SL: ${calculatedStopLoss ? calculatedStopLoss.toFixed(2) : 'none'}, TP: ${calculatedTakeProfit ? calculatedTakeProfit.toFixed(2) : 'none'}]`
                                     : '';
 
+                                const txItem: TransactionItem = {
+                                    type: 'transaction',
+                                    network: 'hyperliquid',
+                                    status: 'success',
+                                    title: 'Order Placed',
+                                    description: `${orderTypeStr} ${args.isBuy ? 'LONG' : 'SHORT'} ${args.coin}`,
+                                    details: {
+                                        amount: orderSize,
+                                        token: args.coin
+                                    }
+                                };
 
                                 toolResults.push({
                                     type: 'success',
                                     title: 'Order Placed',
-                                    details: `Placed ${orderTypeStr} ${args.isBuy ? 'LONG' : 'SHORT'} ${orderSize.toFixed(4)} ${args.coin}${usdcStr}${priceStr}${leverageStr}${tpslStr}`
+                                    details: `Placed ${orderTypeStr} ${args.isBuy ? 'LONG' : 'SHORT'} ${orderSize.toFixed(4)} ${args.coin}${usdcStr}${priceStr}${leverageStr}${tpslStr}`,
+                                    structuredData: {
+                                        resultType: 'transaction',
+                                        items: [txItem],
+                                        title: 'Order Executed'
+                                    }
                                 });
                             } catch (err: any) {
                                 toolResults.push({ type: 'error', title: 'Order Failed', details: err.message });
@@ -1433,6 +1632,12 @@ ${recentFills.map((f: any) => {
                                 title: 'Withdrawal Failed',
                                 details: 'No Hyperliquid Owner Wallet connected. Please connect your MetaMask wallet first.'
                             });
+                        } else if (vault.hlOwnerPublicKey && !vault.hlOwnerPublicKey.startsWith('0x')) {
+                             toolResults.push({
+                                type: 'error',
+                                title: 'Withdrawal Failed',
+                                details: `Invalid Hyperliquid Owner Address: ${vault.hlOwnerPublicKey}. It must be an EVM address (start with 0x). You might be trying to send to a Solana wallet.`
+                            });
                         } else {
                             try {
                                 setAiStatus('Withdrawing from Hyperliquid...');
@@ -1472,6 +1677,58 @@ ${recentFills.map((f: any) => {
                                         details: err.message
                                     });
                                 }
+                            }
+                        }
+                    } else if (name === 'getHLTransfers') {
+                        if (!vault.hlPublicKey) {
+                            toolResults.push({ type: 'error', title: 'HL Error', details: 'Hyperliquid Vault not created/unlocked.' });
+                        } else {
+                            try {
+                                setAiStatus('Fetching Transfer History...');
+                                const updates = await hyperliquidMCP.getUserLedgerUpdates(vault.hlPublicKey);
+                                
+                                if (updates.length === 0) {
+                                    toolResults.push({
+                                        type: 'success',
+                                        title: 'Transfer History',
+                                        details: 'No deposits or withdrawals found.'
+                                    });
+                                } else {
+                                    // Current time for context
+                                    const now = Date.now();
+                                    
+                                    const historyText = updates.slice(0, 10).map((u: any) => {
+                                        const date = new Date(u.time);
+                                        const type = u.delta.amount > 0 ? 'Deposit' : 'Withdrawal';
+                                        const amount = Math.abs(parseFloat(u.delta.amount));
+                                        const status = (now - u.time) < 10 * 60 * 1000 ? 'Processing/Recent' : 'Completed'; // Estimate
+                                        return `• ${type} $${amount.toFixed(2)} USDC - ${date.toLocaleString()} (${status})`;
+                                    }).join('\n');
+
+                                    toolResults.push({
+                                        type: 'success',
+                                        title: 'Hyperliquid Transfers',
+                                        details: `Last 10 updates:\n${historyText}`,
+                                        structuredData: {
+                                            resultType: 'transaction',
+                                            items: updates.map((u: any) => ({
+                                                type: 'transaction',
+                                                network: 'hyperliquid',
+                                                status: 'success',
+                                                title: u.delta.amount > 0 ? 'Deposit' : 'Withdrawal',
+                                                description: `${u.delta.amount > 0 ? 'Deposit' : 'Withdrawal'} of $${Math.abs(parseFloat(u.delta.amount)).toFixed(2)} USDC`,
+                                                details: {
+                                                    amount: Math.abs(parseFloat(u.delta.amount)),
+                                                    token: 'USDC',
+                                                    timestamp: u.time 
+                                                }
+                                            })),
+                                            title: 'Transfer History'
+                                        }
+                                    });
+                                }
+                            } catch (err: any) {
+                                toolResults.push({ type: 'error', title: 'Transfer History Error', details: err.message });
                             }
                         }
                     } else if (name === 'getDealerTradeHistory') {

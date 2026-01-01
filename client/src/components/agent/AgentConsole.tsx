@@ -5,6 +5,8 @@ import remarkGfm from 'remark-gfm';
 import { Bot, Send, User, Sparkles, CheckCircle, AlertTriangle, Clock, Info, Lock, Unlock, Settings, ArrowRight } from 'lucide-react';
 import { AgentMessage, AppTab } from '../../types';
 import { ActionSummaryPanel } from './ActionSummaryPanel';
+import { StructuredResultRenderer } from '../chat/StructuredResultRenderer';
+import { ChatSuggestions } from '../chat/ChatSuggestions';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card } from '../ui/card';
@@ -15,7 +17,7 @@ interface AgentConsoleProps {
     messages: AgentMessage[];
     inputMessage: string;
     setInputMessage: (msg: string) => void;
-    handleSendMessage: () => void;
+    handleSendMessage: (directMessage?: string) => void;
     isAiProcessing: boolean;
     aiStatus: string;
     scrollRef: React.RefObject<HTMLDivElement>;
@@ -146,13 +148,19 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
                     <AnimatePresence>
                         {messages.length === 0 && (
                             <motion.div
-                                className="flex flex-col items-center justify-center h-full text-[#747580] opacity-60"
+                                className="flex flex-col items-center justify-center h-full"
                                 initial={{ opacity: 0 }}
-                                animate={{ opacity: 0.6 }}
+                                animate={{ opacity: 1 }}
                             >
-                                <Bot size={48} className="mb-4 text-[#E7FE55]" />
+                                <Bot size={48} className="mb-4 text-[#E7FE55] opacity-60" />
                                 <p className="text-sm font-semibold text-white">Vault Operator Ready</p>
-                                <p className="text-[11px] text-[#747580]">Ask me to check balances, swap tokens, or schedule automations.</p>
+                                <p className="text-[11px] text-[#747580] mb-2">Ask me to check balances, swap tokens, or schedule automations.</p>
+                                
+                                <ChatSuggestions 
+                                    onSuggestionClick={(suggestion) => {
+                                        handleSendMessage(suggestion);
+                                    }} 
+                                />
                             </motion.div>
                         )}
 
@@ -187,22 +195,30 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
                                             {msg.toolResults && msg.toolResults.length > 0 && (
                                                 <div className="mb-4 space-y-3 w-full">
                                                     {msg.toolResults.map((result, idx) => (
-                                                        <div key={idx} className={cn(
-                                                            "text-[11px] p-3 rounded border",
-                                                            result.type === 'success' ? 'bg-[#34d399]/10 border-[#34d399]/30 text-[#34d399]' :
-                                                                result.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
-                                                                    'bg-[#60a5fa]/10 border-[#60a5fa]/30 text-[#60a5fa]'
-                                                        )}>
-                                                            <div className="flex items-center gap-2 font-bold mb-1">
-                                                                {result.type === 'success' ? <CheckCircle size={14} /> :
-                                                                    result.type === 'error' ? <AlertTriangle size={14} /> :
-                                                                        <Info size={14} />}
-                                                                {result.title}
-                                                            </div>
-                                                            <div className="whitespace-pre-wrap font-mono opacity-90">{result.details}</div>
-                                                            {result.tx && (
-                                                                <div className="mt-2 pt-2 border-t border-white/10 text-[10px] font-mono opacity-70 truncate">
-                                                                    TX: {result.tx}
+                                                        <div key={idx}>
+                                                            {/* Render structured data as rich cards if available */}
+                                                            {result.structuredData ? (
+                                                                <StructuredResultRenderer data={result.structuredData} />
+                                                            ) : (
+                                                                /* Fallback to text-based rendering */
+                                                                <div className={cn(
+                                                                    "text-[11px] p-3 rounded border",
+                                                                    result.type === 'success' ? 'bg-[#34d399]/10 border-[#34d399]/30 text-[#34d399]' :
+                                                                        result.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+                                                                            'bg-[#60a5fa]/10 border-[#60a5fa]/30 text-[#60a5fa]'
+                                                                )}>
+                                                                    <div className="flex items-center gap-2 font-bold mb-1">
+                                                                        {result.type === 'success' ? <CheckCircle size={14} /> :
+                                                                            result.type === 'error' ? <AlertTriangle size={14} /> :
+                                                                                <Info size={14} />}
+                                                                        {result.title}
+                                                                    </div>
+                                                                    <div className="whitespace-pre-wrap font-mono opacity-90">{result.details}</div>
+                                                                    {result.tx && (
+                                                                        <div className="mt-2 pt-2 border-t border-white/10 text-[10px] font-mono opacity-70 truncate">
+                                                                            TX: {result.tx}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             )}
                                                         </div>
