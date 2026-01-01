@@ -5,6 +5,7 @@ import { aiService } from '../services/aiService';
 import { solanaService } from '../services/solanaService';
 import { CryptoService } from '../services/cryptoService';
 import { ConversationService } from '../services/conversationService';
+import { aiRequestQueue } from '../services/ai/requestQueue';
 import { marketDataMCP } from '../mcp/marketData/marketDataMCP';
 import { hyperliquidMCP } from '../mcp/hyperliquid/hyperliquidMCP';
 import { hyperliquidService } from '../services/hyperliquidService';
@@ -52,6 +53,25 @@ export const useAgent = (
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages]);
+
+    // Listen for AI rate limits to update status
+    useEffect(() => {
+        const unsubscribe = aiRequestQueue.addRateLimitListener((info) => {
+            if (isAiProcessing) {
+                if (info.exhausted) {
+                    setAiStatus('API Limit Reached. Saving tasks...');
+                    addNotification('Google Gemini API quota exceeded. Please try again later.');
+                    setIsAiProcessing(false);
+                } else {
+                    setAiStatus(`Rate limited. High traffic. Retrying in ${info.blockedForSeconds}s...`);
+                }
+            }
+        });
+        
+        return () => {
+            unsubscribe();
+        };
+    }, [isAiProcessing]);
 
     // Safe API Key retrieval
     const getApiKey = () => {
@@ -625,7 +645,8 @@ ${recentFills.map((f: any) => {
           - "impermanent loss", "perda impermanente", "IL" → estimateImpermanentLoss
           - "simular", "simulate", "quanto recebo", "how much" → simulateAddLiquidity
           - "comparar", "compare", "qual melhor" → compareLiquidityPools
-          - "volatilidade", "volatility", "volátil", "volatile" → getPoolVolatility
+          - "volatilidade", "volatility", "volátil", "volatile" → getPoolVolatility or getTopVolatilityPools
+          - "ranking volatilidade", "volatility ranking", "most volatile", "mais voláteis" → getTopVolatilityPools
           - "faixa ideal", "optimal range", "sugerir faixa", "suggest range", "faixa otimizada" → suggestOptimalRangeByVolatility
           
           **AVAILABLE LP TOOLS - USE THEM!:**
@@ -641,6 +662,7 @@ ${recentFills.map((f: any) => {
           - 'calculateOptimalPriceRange' - Suggest price range for concentrated liquidity
           - 'getLPSwapQuote' - Get swap quote via LP
           - 'getPoolVolatility' - Calculate historical volatility (accepts tokenA/tokenB OR poolAddress)
+          - 'getTopVolatilityPools' - Get ranked pools by volatility (highest first)
           - 'suggestOptimalRangeByVolatility' - Suggest price ranges based on volatility (accepts tokenA/tokenB OR poolAddress)
           
           **EXAMPLES - EXEMPLOS (When user says → Call this tool):**
@@ -656,6 +678,8 @@ ${recentFills.map((f: any) => {
           - "pools com APY maior que 50%" → searchLiquidityPools(minAPY=50)
           - "top 10 pools por TVL" → getTopLiquidityPools(criteria='tvl', limit=10)
           - "qual a volatilidade do SOL/USDC?" → getPoolVolatility(tokenA='SOL', tokenB='USDC')
+          - "pools mais voláteis" / "most volatile pools" → getTopVolatilityPools(limit=10)
+          - "ranking de volatilidade" → getTopVolatilityPools()
           - "volatilidade do pool X" → getPoolVolatility(poolAddress='X')
           - "sugira faixa para SOL/USDC" → suggestOptimalRangeByVolatility(tokenA='SOL', tokenB='USDC')
           - "sugira faixa para esse pool" → suggestOptimalRangeByVolatility(poolAddress='X')

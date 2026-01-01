@@ -74,8 +74,8 @@ export class AIRequestQueue {
         jitterMs: 1000
     };
 
-    // Rate limit callback for external notification
-    private onRateLimitCallback: ((info: { consecutiveHits: number; blockedForSeconds: number; exhausted: boolean }) => void) | null = null;
+    // Rate limit listeners
+    private rateLimitListeners: ((info: { consecutiveHits: number; blockedForSeconds: number; exhausted: boolean }) => void)[] = [];
 
     private constructor() {
         console.log('[AIRequestQueue] 🚀 Initialized global request queue');
@@ -100,11 +100,25 @@ export class AIRequestQueue {
     }
 
     /**
-     * Set callback for rate limit notifications
-     * Used by dealerService to display feedback in the Live dashboard
+     * Add a listener for rate limit notifications
+     * Returns a function to unsubscribe
+     */
+    addRateLimitListener(callback: (info: { consecutiveHits: number; blockedForSeconds: number; exhausted: boolean }) => void): () => void {
+        this.rateLimitListeners.push(callback);
+        
+        // Return unsubscribe function
+        return () => {
+            this.rateLimitListeners = this.rateLimitListeners.filter(listener => listener !== callback);
+        };
+    }
+
+    /**
+     * Deprecated: Use addRateLimitListener instead
      */
     setOnRateLimit(callback: ((info: { consecutiveHits: number; blockedForSeconds: number; exhausted: boolean }) => void) | null): void {
-        this.onRateLimitCallback = callback;
+        if (callback) {
+            this.addRateLimitListener(callback);
+        }
     }
 
     /**
@@ -294,14 +308,18 @@ export class AIRequestQueue {
         console.log(`[AIRequestQueue] 🚫 Rate limited (hit #${this.consecutiveRateLimits}). Blocked for ${totalWait}s`);
 
         // Notify external listeners about rate limit
-        if (this.onRateLimitCallback) {
-            const exhausted = this.consecutiveRateLimits >= this.config.maxRetries;
-            this.onRateLimitCallback({
-                consecutiveHits: this.consecutiveRateLimits,
-                blockedForSeconds: totalWait,
-                exhausted
-            });
-        }
+        const exhausted = this.consecutiveRateLimits >= this.config.maxRetries;
+        this.rateLimitListeners.forEach(listener => {
+            try {
+                listener({
+                    consecutiveHits: this.consecutiveRateLimits,
+                    blockedForSeconds: totalWait,
+                    exhausted
+                });
+            } catch (e) {
+                console.error('[AIRequestQueue] Error in rate limit listener:', e);
+            }
+        });
     }
 
     /**
