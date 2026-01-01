@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     RefreshCw, Zap, DollarSign, Clock, Target, X, AlertCircle,
-    Sparkles, Filter, TrendingUp
+    Sparkles, Filter, TrendingUp, Plus, Minus
 } from 'lucide-react';
 import {
     PolymarketSettings,
@@ -181,12 +181,13 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Amount ($)</label>
                                 {localSettings.bankrollType === 'MANUAL' ? (
-                                    <input
-                                        type="number"
-                                        value={localSettings.manualBankroll}
-                                        onChange={(e) => handleLocalChange({ manualBankroll: parseFloat(e.target.value) || 0 })}
-                                        className="w-full bg-transparent text-sm font-mono text-white focus:outline-none"
-                                    />
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-bold font-mono text-white">{localSettings.manualBankroll?.toLocaleString() || 0}</span>
+                                        <div className="flex flex-col gap-0.5">
+                                            <button onClick={() => handleLocalChange({ manualBankroll: (localSettings.manualBankroll || 0) + 100 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                            <button onClick={() => handleLocalChange({ manualBankroll: Math.max(0, (localSettings.manualBankroll || 0) - 100) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                        </div>
+                                    </div>
                                 ) : (
                                     <span className="text-sm font-mono text-[#34d399]">Auto</span>
                                 )}
@@ -195,23 +196,25 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                             {/* Max Position */}
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Max Pos ($)</label>
-                                <input
-                                    type="number"
-                                    value={localSettings.maxPositionSizeUSDC}
-                                    onChange={(e) => handleLocalChange({ maxPositionSizeUSDC: parseInt(e.target.value) || 0 })}
-                                    className="w-full bg-transparent text-sm font-mono text-white focus:outline-none"
-                                />
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold font-mono text-white">{localSettings.maxPositionSizeUSDC?.toLocaleString() || 0}</span>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalChange({ maxPositionSizeUSDC: (localSettings.maxPositionSizeUSDC || 0) + 100 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalChange({ maxPositionSizeUSDC: Math.max(0, (localSettings.maxPositionSizeUSDC || 0) - 100) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Max Open */}
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Max Open</label>
-                                <input
-                                    type="number"
-                                    value={localSettings.maxOpenPositions}
-                                    onChange={(e) => handleLocalChange({ maxOpenPositions: parseInt(e.target.value) || 1 })}
-                                    className="w-full bg-transparent text-sm font-mono text-white focus:outline-none"
-                                />
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold font-mono text-white">{localSettings.maxOpenPositions}</span>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalChange({ maxOpenPositions: (localSettings.maxOpenPositions || 1) + 1 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalChange({ maxOpenPositions: Math.max(1, (localSettings.maxOpenPositions || 1) - 1) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -223,41 +226,44 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
-                                <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Interval</label>
-                                <div className="flex items-baseline gap-1">
-                                    <input
-                                        type="number"
-                                        value={localSettings.checkIntervalSeconds}
-                                        onChange={(e) => handleLocalChange({ checkIntervalSeconds: Math.max(60, parseInt(e.target.value) || 60) })}
-                                        className="w-full bg-transparent text-sm font-mono text-white focus:outline-none"
-                                    />
-                                    <span className="text-[10px] text-[#747580]">s</span>
+                                <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Interval (seconds)</label>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-sm font-bold font-mono text-white">{localSettings.checkIntervalSeconds}</span>
+                                        <span className="text-[10px] text-[#747580]">s</span>
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalChange({ checkIntervalSeconds: (localSettings.checkIntervalSeconds || 60) + 10 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalChange({ checkIntervalSeconds: Math.max(60, (localSettings.checkIntervalSeconds || 60) - 10) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Min Volume</label>
-                                <div className="flex items-center">
-                                    <span className="text-[10px] text-[#747580] mr-1">$</span>
-                                    <input
-                                        type="number"
-                                        value={localSettings.minVolumeThreshold}
-                                        onChange={(e) => handleLocalChange({ minVolumeThreshold: parseInt(e.target.value) || 0 })}
-                                        className="w-full bg-transparent text-sm font-mono text-white focus:outline-none"
-                                    />
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-[10px] text-[#747580]">$</span>
+                                        <span className="text-sm font-bold font-mono text-white">{localSettings.minVolumeThreshold?.toLocaleString() || 0}</span>
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalChange({ minVolumeThreshold: (localSettings.minVolumeThreshold || 0) + 100 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalChange({ minVolumeThreshold: Math.max(0, (localSettings.minVolumeThreshold || 0) - 100) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Min Liquidity</label>
-                                <div className="flex items-center">
-                                    <span className="text-[10px] text-[#747580] mr-1">$</span>
-                                    <input
-                                        type="number"
-                                        value={localSettings.minLiquidityThreshold}
-                                        onChange={(e) => handleLocalChange({ minLiquidityThreshold: parseInt(e.target.value) || 0 })}
-                                        className="w-full bg-transparent text-sm font-mono text-white focus:outline-none"
-                                    />
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-[10px] text-[#747580]">$</span>
+                                        <span className="text-sm font-bold font-mono text-white">{localSettings.minLiquidityThreshold?.toLocaleString() || 0}</span>
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalChange({ minLiquidityThreshold: (localSettings.minLiquidityThreshold || 0) + 100 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalChange({ minLiquidityThreshold: Math.max(0, (localSettings.minLiquidityThreshold || 0) - 100) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -305,29 +311,23 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Spread Edge</label>
-                                <div className="flex items-baseline gap-1">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={localSettings.minSpreadThreshold || 0.02}
-                                        onChange={(e) => handleLocalChange({ minSpreadThreshold: parseFloat(e.target.value) || 0.02 })}
-                                        className="w-full bg-transparent text-sm font-mono text-white focus:outline-none"
-                                    />
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold font-mono text-white">{(localSettings.minSpreadThreshold || 0.02).toFixed(2)}</span>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalChange({ minSpreadThreshold: parseFloat(((localSettings.minSpreadThreshold || 0.02) + 0.01).toFixed(2)) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalChange({ minSpreadThreshold: Math.max(0, parseFloat(((localSettings.minSpreadThreshold || 0.02) - 0.01).toFixed(2))) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Confidence</label>
-                                <div className="flex items-baseline gap-1">
-                                    <input
-                                        type="number"
-                                        step="0.05"
-                                        min="0"
-                                        max="1"
-                                        value={localSettings.confidenceThreshold || 0.6}
-                                        onChange={(e) => handleLocalChange({ confidenceThreshold: parseFloat(e.target.value) || 0.6 })}
-                                        className="w-full bg-transparent text-sm font-mono text-white focus:outline-none"
-                                    />
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold font-mono text-white">{(localSettings.confidenceThreshold || 0.6).toFixed(2)}</span>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalChange({ confidenceThreshold: Math.min(1, parseFloat(((localSettings.confidenceThreshold || 0.6) + 0.05).toFixed(2))) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalChange({ confidenceThreshold: Math.max(0, parseFloat(((localSettings.confidenceThreshold || 0.6) - 0.05).toFixed(2))) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

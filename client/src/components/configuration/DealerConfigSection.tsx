@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     RefreshCw, Settings, ShieldCheck, Zap, DollarSign, Activity, Target, X,
-    Clock, BarChart2, TrendingUp
+    Clock, BarChart2, TrendingUp, Plus, Minus
 } from 'lucide-react';
 import { DealerState, IndicatorSettings, PresetName, DealerSettings } from '../../state/dealerStore';
 import { hyperliquidService } from '../../services/hyperliquidService';
@@ -151,13 +151,12 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                             <div className="bg-[#0f1015] p-2 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1">Amount ($)</label>
                                 {localSettings.bankrollType === 'MANUAL' ? (
-                                    <div className="flex items-center">
-                                        <input
-                                            type="number"
-                                            value={localSettings.manualBankroll}
-                                            onChange={(e) => handleLocalUpdate({ manualBankroll: parseFloat(e.target.value) })}
-                                            className="w-full bg-transparent text-sm font-mono text-white focus:outline-none"
-                                        />
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-bold font-mono text-white">{localSettings.manualBankroll?.toLocaleString() || 0}</span>
+                                        <div className="flex flex-col gap-0.5">
+                                            <button onClick={() => handleLocalUpdate({ manualBankroll: (localSettings.manualBankroll || 0) + 100 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                            <button onClick={() => handleLocalUpdate({ manualBankroll: Math.max(0, (localSettings.manualBankroll || 0) - 100) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <span className="text-sm font-mono text-[#E7FE55]">Auto</span>
@@ -167,38 +166,39 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                             {/* Leverage */}
                             <div className="bg-[#0f1015] p-2 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1">Leverage</label>
-                                <div className="flex items-center">
-                                    <input
-                                        type="number"
-                                        value={localSettings.maxLeverage}
-                                        onChange={(e) => handleLocalUpdate({ maxLeverage: parseInt(e.target.value) })}
-                                        className="w-full bg-transparent text-sm font-bold font-mono text-white focus:outline-none"
-                                    />
-                                    <span className="text-[14px] text-[#747580]">x</span>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-baseline gap-0.5">
+                                        <span className="text-sm font-bold font-mono text-white">{localSettings.maxLeverage}</span>
+                                        <span className="text-[10px] text-[#747580]">x</span>
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalUpdate({ maxLeverage: (localSettings.maxLeverage || 1) + 1 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalUpdate({ maxLeverage: Math.max(1, (localSettings.maxLeverage || 1) - 1) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Pos/Cycle */}
                             <div className="bg-[#0f1015] p-2 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1">Pos/Cycle</label>
-                                <input
-                                    type="number"
-                                    value={localSettings.maxOpenPositions}
-                                    onChange={(e) => handleLocalUpdate({ maxOpenPositions: parseInt(e.target.value) })}
-                                    className="w-full bg-transparent text-sm font-bold font-mono text-white focus:outline-none"
-                                />
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold font-mono text-white">{localSettings.maxOpenPositions}</span>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalUpdate({ maxOpenPositions: (localSettings.maxOpenPositions || 1) + 1 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalUpdate({ maxOpenPositions: Math.max(1, (localSettings.maxOpenPositions || 1) - 1) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Max Size */}
                             <div className="bg-[#0f1015] p-2 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1">Max Size ($)</label>
-                                <div className="flex items-center">
-                                    <input
-                                        type="number"
-                                        value={localSettings.maxPositionSizeUSDC}
-                                        onChange={(e) => handleLocalUpdate({ maxPositionSizeUSDC: parseInt(e.target.value) })}
-                                        className="w-full bg-transparent text-sm font-bold font-mono text-white focus:outline-none"
-                                    />
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold font-mono text-white">{localSettings.maxPositionSizeUSDC?.toLocaleString() || 0}</span>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalUpdate({ maxPositionSizeUSDC: (localSettings.maxPositionSizeUSDC || 0) + 100 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalUpdate({ maxPositionSizeUSDC: Math.max(0, (localSettings.maxPositionSizeUSDC || 0) - 100) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -296,30 +296,27 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                             </div>
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[10px] text-[#747580] font-medium mb-1.5 uppercase tracking-wider">Indicators History</label>
-                                <input
-                                    type="number"
-                                    min={10}
-                                    max={100}
-                                    value={localSettings.historyCandles || 100}
-                                    onChange={(e) => handleLocalUpdate({
-                                        historyCandles: Math.min(100, Math.max(10, parseInt(e.target.value) || 100))
-                                    })}
-                                    className="w-full bg-transparent text-sm font-mono text-white focus:outline-none"
-                                    title="10-100"
-                                />
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold font-mono text-white">{localSettings.historyCandles || 100}</span>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalUpdate({ historyCandles: Math.min(100, (localSettings.historyCandles || 100) + 10) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalUpdate({ historyCandles: Math.max(10, (localSettings.historyCandles || 100) - 10) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
+                                </div>
                             </div>
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[10px] text-[#747580] font-medium mb-1.5 uppercase tracking-wider">
-                                    <Clock className="inline h-3 w-3 mr-1 opacity-50" />Interval
+                                    <Clock className="inline h-3 w-3 mr-1 opacity-50" />Interval (seconds)
                                 </label>
-                                <div className="flex items-baseline gap-1">
-                                    <input
-                                        type="number"
-                                        value={localSettings.checkIntervalSeconds}
-                                        onChange={(e) => handleLocalUpdate({ checkIntervalSeconds: Math.max(60, parseInt(e.target.value) || 60) })}
-                                        className="w-full bg-transparent text-sm font-mono text-white focus:outline-none"
-                                    />
-                                    <span className="text-[10px] text-[#747580]">s</span>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-sm font-bold font-mono text-white">{localSettings.checkIntervalSeconds}</span>
+                                        <span className="text-[10px] text-[#747580]">s</span>
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => handleLocalUpdate({ checkIntervalSeconds: (localSettings.checkIntervalSeconds || 60) + 10 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
+                                        <button onClick={() => handleLocalUpdate({ checkIntervalSeconds: Math.max(60, (localSettings.checkIntervalSeconds || 60) - 10) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

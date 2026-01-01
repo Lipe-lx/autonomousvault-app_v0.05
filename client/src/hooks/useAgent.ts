@@ -89,9 +89,11 @@ export const useAgent = (
         }
     };
 
-    const handleSendMessage = async (directMessage?: string) => {
+    const handleSendMessage = async (directMessage?: string | any) => {
         // Use direct message (from suggestion click) or input field
-        const messageToSend = directMessage || inputMessage;
+        // Handle case where directMessage is an event (from onClick)
+        const actualMessage = typeof directMessage === 'string' ? directMessage : undefined;
+        const messageToSend = actualMessage || inputMessage;
         if (!messageToSend.trim()) return;
 
         const apiKey = getApiKey();

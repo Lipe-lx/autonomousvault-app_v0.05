@@ -18,7 +18,7 @@ import { useScheduler } from './hooks/useScheduler';
 import { useAgent } from './hooks/useAgent';
 import { usePolymarket } from './hooks/usePolymarket';
 import { ConversationService } from './services/conversationService';
-import { X, RefreshCw, Menu, Settings, ChevronDown, ChevronUp, Clock, CalendarClock, Plus, LogOut } from 'lucide-react';
+import { X, RefreshCw, Menu, Settings, ChevronDown, ChevronUp, Clock, CalendarClock, Plus, LogOut, Shield } from 'lucide-react';
 
 import { HistoryPage } from './components/agent/HistoryPage';
 import { ConfigurationPage } from './components/configuration/ConfigurationPage';
@@ -316,6 +316,19 @@ export default function App() {
                             >
                                 <CalendarClock size={14} />
                                 <span className="hidden md:inline">Automations</span>
+                            </button>
+
+                            {/* Divider */}
+                            <div className="h-6 w-px bg-[#232328]" />
+
+                            {/* Solana Policy Button */}
+                            <button
+                                onClick={() => setActiveTab(AppTab.SOLANA_DEALER_POLICY)}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded bg-[#14151a] hover:bg-[#1a1b21] text-[#a0a1a8] hover:text-white text-sm font-medium transition-colors border border-[#232328]"
+                                title="Solana Dealer Policy"
+                            >
+                                <Shield size={14} />
+                                <span className="hidden md:inline">Solana Policy</span>
                             </button>
                         </div>
 

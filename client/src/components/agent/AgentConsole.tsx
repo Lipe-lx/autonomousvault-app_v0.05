@@ -336,7 +336,7 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
                             disabled={isAiProcessing}
                         />
                         <Button
-                            onClick={handleSendMessage}
+                            onClick={() => handleSendMessage()}
                             disabled={!inputMessage.trim() || isAiProcessing}
                             size="icon"
                             className="absolute right-2 top-2 bottom-2 h-auto bg-[#E7FE55] hover:bg-[#f0ff7a] text-black"
