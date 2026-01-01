@@ -61,7 +61,15 @@ export class PoolService {
      */
     async getTopPools(
         criteria: 'volume' | 'apy' | 'tvl',
-        timeframeMinutes: number = 24 * 60 // Default 24h
+        timeframeMinutes: number = 24 * 60, // Default 24h
+        filters?: {
+            minTVL?: number;
+            minVolume?: number;
+            minAPY?: number;
+            protocol?: string[];
+            tokenAllowlist?: string[];
+            tokenBlocklist?: string[];
+        }
     ): Promise<LiquidityPool[]> {
         const supabase = getSupabaseClient();
         if (!supabase) return [];
@@ -72,14 +80,14 @@ export class PoolService {
             if (criteria === 'volume' && timeframeMinutes < 24 * 60) {
                 const { data, error } = await supabase.rpc('get_top_pools_with_delta', {
                     timeframe_minutes: timeframeMinutes,
-                    rank_limit: 50
+                    rank_limit: 50 // RPC internal limit, still might need client side filtering if RPC doesn't support all filters
                 });
 
                 if (error) {
                     // Fallback if RPC fails or not exists
                     console.warn('[PoolService] RPC failed, falling back to standard', error);
                 } else {
-                    return (data || []).map((row: any) => ({
+                    let pools = (data || []).map((row: any) => ({
                         address: row.pool_address,
                         protocol: row.protocol,
                         name: row.pool_name,
@@ -91,6 +99,13 @@ export class PoolService {
                         },
                         apy: row.current_apy
                     } as any));
+
+                    // Apply upstream filters
+                    if (filters) {
+                        pools = this.applyFilters(pools, filters);
+                    }
+                    
+                    return pools;
                 }
             }
 
@@ -113,6 +128,11 @@ export class PoolService {
 
             let pools = (data || []).map((row: any) => this.mapRowToPool(row));
 
+            // Apply upstream filters BEFORE sort and slice
+            if (filters) {
+                pools = this.applyFilters(pools, filters);
+            }
+
             // Client-side sort
             pools.sort((a, b) => {
                 if (criteria === 'tvl') return b.tvl - a.tvl;
@@ -125,6 +145,49 @@ export class PoolService {
             console.error('[PoolService] Error getting top pools:', error);
             return [];
         }
+    }
+
+    private applyFilters(pools: LiquidityPool[], filters: any): LiquidityPool[] {
+        return pools.filter(pool => {
+            // TVL Filter
+            if (filters.minTVL && pool.tvl < filters.minTVL) return false;
+            
+            // Volume Filter
+            if (filters.minVolume && (pool.volume['24h'] || 0) < filters.minVolume) return false;
+            
+            // APY Filter
+            if (filters.minAPY && (pool.apy || 0) < filters.minAPY) return false;
+            
+            // Protocol Filter
+            if (filters.protocol && filters.protocol.length > 0) {
+                if (!filters.protocol.includes(pool.protocol)) return false;
+            }
+            
+            // Token Allowlist
+            if (filters.tokenAllowlist && filters.tokenAllowlist.length > 0) {
+                const tokenASymbol = pool.tokenA.symbol.toUpperCase();
+                const tokenBSymbol = pool.tokenB.symbol.toUpperCase();
+                const allowed = filters.tokenAllowlist.map((t: string) => t.toUpperCase());
+                
+                // At least one token must be in allowed list? Or both? 
+                // Usually for allowlist, we want pools that contain allowed tokens. 
+                // Let's being strict: BOTH must be allowed if allowlist exists? 
+                // Or maybe just one? Let's assume strict for safety unless policy says otherwise.
+                // Actually, standard policy logic usually means "if set, tokens must be in list".
+                if (!allowed.includes(tokenASymbol) && !allowed.includes(tokenBSymbol)) return false;
+            }
+
+            // Token Blocklist
+            if (filters.tokenBlocklist && filters.tokenBlocklist.length > 0) {
+                const tokenASymbol = pool.tokenA.symbol.toUpperCase();
+                const tokenBSymbol = pool.tokenB.symbol.toUpperCase();
+                const blocked = filters.tokenBlocklist.map((t: string) => t.toUpperCase());
+                
+                if (blocked.includes(tokenASymbol) || blocked.includes(tokenBSymbol)) return false;
+            }
+
+            return true;
+        });
     }
 
     private mapRowToPool(row: any): LiquidityPool {

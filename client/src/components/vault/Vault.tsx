@@ -868,7 +868,7 @@ export const Vault: React.FC<VaultProps> = ({
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4 }}
-                    className="max-w-md mx-auto relative z-10 flex flex-col items-center justify-center flex-1 w-full"
+                    className="max-w-md mx-auto relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-120px)] w-full"
                 >
                     <motion.div
                         animate={{

@@ -14,7 +14,7 @@ import {
     PoolQueryFilters,
     TimeFrame
 } from '../types/solanaLiquidityTypes';
-import { LPOperationScope, SemanticType, LPAuditEntry } from '../types/solanaLPTypes';
+import { LPOperationScope, SemanticType, LPAuditEntry, LPPolicyRules } from '../types/solanaLPTypes';
 import { 
     StructuredResult, 
     PoolItem, 
@@ -49,6 +49,68 @@ export interface ToolResult {
 }
 
 /**
+ * Check if a pool meets policy criteria
+ * Works with both full LiquidityPool and partial pool objects
+ */
+function poolMeetsPolicy(
+    pool: { address: string; name: string; protocol: string; tvl: number; volume?: { '24h'?: number }; tokenA?: { symbol: string }; tokenB?: { symbol: string } },
+    policy: LPPolicyRules
+): boolean {
+    if (!policy.enabled) return true;
+    
+    // TVL check
+    if (policy.minTVLRequired > 0 && pool.tvl < policy.minTVLRequired) return false;
+    
+    // Volume check - if minVolumeRequired is set, pools without volume data are blocked
+    if (policy.minVolumeRequired > 0) {
+        const volume24h = pool.volume?.['24h'] || 0;
+        if (volume24h < policy.minVolumeRequired) return false;
+    }
+    
+    // Token checks - extract from name for partial pools, use symbols for full pools
+    let tokens: string[] = [];
+    if (pool.tokenA && pool.tokenB) {
+        tokens = [pool.tokenA.symbol, pool.tokenB.symbol];
+    } else {
+        // Extract tokens from pool name (e.g., "SOL-USDC" or "BONK/SOL")
+        tokens = pool.name.split(/[-\/]/).map(t => t.trim().toUpperCase());
+    }
+    
+    // Token blocklist
+    if (policy.tokenBlocklist.length > 0) {
+        if (policy.tokenBlocklist.some(blocked => 
+            tokens.some(t => t.toUpperCase() === blocked.toUpperCase())
+        )) return false;
+    }
+    
+    // Token allowlist (if not empty, all tokens must be in allowlist)
+    if (policy.tokenAllowlist.length > 0) {
+        const allAllowed = tokens.every(t => 
+            policy.tokenAllowlist.some(a => a.toUpperCase() === t.toUpperCase())
+        );
+        if (!allAllowed) return false;
+    }
+    
+    // Protocol allowlist
+    if (policy.protocolAllowlist.length > 0) {
+        if (!policy.protocolAllowlist.some(p => pool.protocol.toLowerCase().includes(p.toLowerCase()))) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+/**
+ * Filter pools based on policy rules
+ * Used to exclude pools that don't meet policy criteria from search results
+ */
+function filterPoolsByPolicy(pools: LiquidityPool[], policy: LPPolicyRules): LiquidityPool[] {
+    if (!policy.enabled) return pools;
+    return pools.filter(pool => poolMeetsPolicy(pool, policy));
+}
+
+/**
  * Handle LP-related AI tool calls
  * @returns ToolResult if tool was handled, null if tool is not LP-related
  */
@@ -69,18 +131,32 @@ export async function handleLPToolCall(
         try {
             setAiStatus('Searching liquidity pools...');
 
+            // Get policy values from store (these are the MINIMUM requirements)
+            const policy = solanaDealerStore.getPolicy();
+            
+            // Policy values take precedence - use the highest of policy vs AI args
+            const effectiveMinTVL = policy.enabled 
+                ? Math.max(policy.minTVLRequired || 0, args.minTVL || 0)
+                : args.minTVL;
+            const effectiveMinVolume = policy.enabled 
+                ? Math.max(policy.minVolumeRequired || 0, args.minVolume || 0)
+                : args.minVolume;
+            const effectiveMinAPY = policy.enabled 
+                ? Math.max(policy.minAPYRequired || 0, args.minAPY || 0)
+                : args.minAPY;
+
             const filters: PoolQueryFilters = {
                 tokenPair: args.tokenA && args.tokenB ? { tokenA: args.tokenA, tokenB: args.tokenB } : undefined,
-                minTVL: args.minTVL,
-                minVolume: args.minVolume,
+                minTVL: effectiveMinTVL,
+                minVolume: effectiveMinVolume,
                 volumeTimeframe: args.volumeTimeframe as TimeFrame,
-                minAPY: args.minAPY,
+                minAPY: effectiveMinAPY,
                 sortBy: args.sortBy || 'tvl',
                 sortOrder: 'desc',
                 limit: args.limit || 10
             };
 
-            // Filter by protocol if specified
+            // Filter by protocol if specified, but respect policy allowlist
             if (args.protocol) {
                 if (args.protocol === 'meteora') {
                     filters.protocol = ['meteora_dlmm', 'meteora_damm'];
@@ -91,27 +167,33 @@ export async function handleLPToolCall(
 
             const pools = await liquidityPoolMCP.discoverPools(filters);
 
-            if (pools.length === 0) {
+            // Apply policy filters (token allowlist/blocklist, protocol allowlist)
+            const filteredPools = filterPoolsByPolicy(pools, policy);
+
+            if (filteredPools.length === 0) {
+                const policyNote = policy.enabled && pools.length > 0 
+                    ? `\n\n_${pools.length} pools were filtered out by your Policy settings._`
+                    : '';
                 return {
                     type: 'info',
                     title: 'No Pools Found',
-                    details: 'No pools match your search criteria.'
+                    details: 'No pools match your search criteria.' + policyNote
                 };
             }
 
-            let details = `Found ${pools.length} pools:\n\n`;
+            let details = `Found ${filteredPools.length} pools:\n\n`;
             details += '| Pool | Protocol | TVL | Volume 24h | APY |\n|------|----------|-----|------------|-----|\n';
             
-            pools.forEach(pool => {
+            filteredPools.forEach(pool => {
                 const protocol = pool.protocol.includes('meteora') ? 'MET' : 'RAY';
                 details += `| ${pool.name} | ${protocol} | $${pool.tvl.toLocaleString()} | $${(pool.volume['24h'] || 0).toLocaleString()} | ${(pool.apy || 0).toFixed(2)}% |\n`;
             });
 
             // Log to audit
-            solanaDealerStore.addLog('INFO', `Searched pools: ${pools.length} results`, { filters });
+            solanaDealerStore.addLog('INFO', `Searched pools: ${filteredPools.length} results (${pools.length - filteredPools.length} filtered by policy)`, { filters });
 
             // Build structured data for rich cards
-            const poolItems: PoolItem[] = pools.map(pool => {
+            const poolItems: PoolItem[] = filteredPools.map(pool => {
                 const protocolId: ProtocolId = pool.protocol.includes('meteora') ? 'meteora' : 'raydium';
                 return {
                     type: 'pool' as const,
@@ -137,7 +219,7 @@ export async function handleLPToolCall(
                 structuredData: {
                     resultType: 'pools',
                     items: poolItems,
-                    summary: `Found ${pools.length} pools`
+                    summary: `Found ${filteredPools.length} pools`
                 }
             };
         } catch (err: any) {
@@ -181,11 +263,32 @@ export async function handleLPToolCall(
         try {
             setAiStatus(`Getting top pools by ${args.criteria}...`);
             
+            // Get policy values from store (these are enforced minimums)
+            const policy = solanaDealerStore.getPolicy();
+            
+            // Policy values take precedence - use the highest of policy vs AI args
+            const effectiveMinTVL = policy.enabled 
+                ? Math.max(policy.minTVLRequired || 0, args.minTVL || 0)
+                : args.minTVL;
+            
+            // For getTopLiquidityPools tool, minVolume comes only from Policy (not in args)
+            // But if we add it to args in future, we should handle it. For now, use Policy or 0.
+            const effectiveMinVolume = policy.enabled 
+                ? policy.minVolumeRequired || 0
+                : 0;
+
+            const effectiveMinAPY = policy.enabled
+                ? Math.max(policy.minAPYRequired || 0, 0)
+                : 0;
+            
             const rankings = await liquidityPoolMCP.getTopPools(
                 args.criteria,
                 {
                     timeframe: args.volumeTimeframe as TimeFrame,
-                    minTVL: args.minTVL,
+                    minTVL: effectiveMinTVL,
+                    minVolume: effectiveMinVolume,
+                    minAPY: effectiveMinAPY,
+                    protocol: args.protocol ? (args.protocol === 'meteora' ? ['meteora_dlmm'] : ['raydium_clmm', 'raydium_cpmm']) : undefined,
                     limit: args.limit || 10
                 }
             );
@@ -194,8 +297,21 @@ export async function handleLPToolCall(
                 return { type: 'info', title: 'No Pools', details: 'No pools found matching criteria.' };
             }
 
+            // Apply policy filters (volume, tokens, protocols)
+            const filteredRankings = rankings.filter(r => 
+                filterPoolsByPolicy([r.pool], policy).length > 0
+            );
+
+            if (filteredRankings.length === 0) {
+                return { 
+                    type: 'info', 
+                    title: 'No Pools', 
+                    details: `No pools match criteria.\n\n_${rankings.length} pools were filtered out by your Policy settings._` 
+                };
+            }
+
             // Ensure descending order (highest first)
-            const sorted = [...rankings].sort((a, b) => b.score - a.score);
+            const sorted = [...filteredRankings].sort((a, b) => b.score - a.score);
 
             let details = `Top ${sorted.length} pools by ${args.criteria}:\n\n`;
             sorted.forEach((r, idx) => {
@@ -416,11 +532,23 @@ ${position.priceRange ? `- Price Range: ${position.priceRange.min.toFixed(4)} - 
         // Get policy for validation
         const policy = solanaDealerStore.getPolicy();
         
-        // Validate against policy
+        // Fetch pool data for complete policy validation
+        let pool = await meteoraService.getPool(args.poolAddress);
+        if (!pool) {
+            pool = await raydiumService.getPoolById(args.poolAddress);
+        }
+        
+        // Validate against policy with complete pool data
         const validation = lpPolicyService.validateOperation(
             'OPEN_POSITION',
             {
                 poolAddress: args.poolAddress,
+                poolName: pool?.name,
+                tokens: pool ? [pool.tokenA.symbol, pool.tokenB.symbol] : undefined,
+                tvl: pool?.tvl,
+                volume24h: pool?.volume['24h'],
+                apy: pool?.apy,
+                protocol: pool?.protocol,
                 rangeWidthPercent: args.priceMin && args.priceMax && args.currentPrice 
                     ? ((args.priceMax - args.priceMin) / args.currentPrice) * 100 
                     : undefined
@@ -729,22 +857,29 @@ Tighter ranges = higher capital efficiency, more active management needed`
             
             const results = await volatilityService.getTopPoolsByVolatility(limit, days, minTVL, protocol);
             
-            if (results.length === 0) {
+            // Apply policy filters
+            const policyRules = solanaDealerStore.getPolicy();
+            const filteredResults = results.filter(r => poolMeetsPolicy(r.pool, policyRules));
+            
+            if (filteredResults.length === 0) {
+                const policyNote = policyRules.enabled && results.length > 0
+                    ? `\n\n_${results.length} pools were filtered out by your Policy settings._`
+                    : '';
                 return { 
                     type: 'info', 
                     title: 'No Pools Found', 
-                    details: 'No pools with volatility data found in database.\n\nThis could mean:\n- No pools have been synced yet\n- No historical data available for volatility calculation\n\nData sync runs every 5 minutes.' 
+                    details: 'No pools with volatility data found in database.\n\nThis could mean:\n- No pools have been synced yet\n- No historical data available for volatility calculation\n\nData sync runs every 5 minutes.' + policyNote
                 };
             }
 
-            let details = `📊 **Top ${results.length} Pools by Volatility**\n\n`;
+            let details = `📊 **Top ${filteredResults.length} Pools by Volatility**\n\n`;
             details += `| # | Pool | Protocol | Daily Vol | Ann. Vol | Price Δ 24h | TVL |\n`;
             details += `|---|------|----------|-----------|----------|-------------|-----|\n`;
             
             // Build structured volatility items
             const volatilityItems: VolatilityItem[] = [];
             
-            results.forEach((r, idx) => {
+            filteredResults.forEach((r, idx) => {
                 const protocolLabel = r.pool.protocol.includes('meteora') ? 'MET' : 'RAY';
                 const protocolId: ProtocolId = r.pool.protocol.includes('meteora') ? 'meteora' : 'raydium';
                 const tvl = r.pool.tvl >= 1000 ? `$${(r.pool.tvl / 1000).toFixed(1)}K` : `$${r.pool.tvl.toFixed(0)}`;

@@ -259,7 +259,7 @@ export default function App() {
             {/* Main Content */}
             <main ref={mainRef} className={`flex-1 ml-0 xl:ml-[264px] h-full flex flex-col relative transition-all duration-300 ${[AppTab.VAULT_DEALER, AppTab.DEALER_DASHBOARD, AppTab.DEALER_THINKING, AppTab.DEALER_CONFIG, AppTab.DEALER_PROMPT, AppTab.POLYMARKET_DEALER, AppTab.POLYMARKET_DASHBOARD, AppTab.POLYMARKET_THINKING, AppTab.POLYMARKET_CONFIG, AppTab.POLYMARKET_PROMPT, AppTab.SOLANA_DEALER, AppTab.SOLANA_DEALER_DASHBOARD, AppTab.SOLANA_DEALER_THINKING, AppTab.SOLANA_DEALER_POLICY, AppTab.SOLANA_DEALER_LOG].includes(activeTab) ? 'overflow-hidden' : 'overflow-y-auto'}`}>
                 {/* Vault Operator Header - Outside padded container for full-width */}
-                {activeTab === AppTab.AGENT && (
+                {activeTab === AppTab.AGENT && vault.isUnlocked && (
                     <header className="flex justify-between items-center mb-0 sticky top-0 z-40 bg-[#0f1015] pt-8 pb-4 px-4 md:px-8 lg:px-12 xl:px-16 transition-all shrink-0 relative">
                         {/* Left: Title */}
                         <div className="flex items-center gap-3 min-w-0">
@@ -426,8 +426,8 @@ export default function App() {
                 )}
 
                 <div className={`flex-1 pb-8 max-w-[1920px] mx-auto w-full ${activeTab === AppTab.AGENT ? 'px-6 md:px-24 lg:px-40 xl:px-64' : 'px-4 md:px-8 lg:px-12 xl:px-16'} ${[AppTab.VAULT_DEALER, AppTab.DEALER_DASHBOARD, AppTab.DEALER_THINKING, AppTab.DEALER_CONFIG, AppTab.DEALER_PROMPT, AppTab.POLYMARKET_DEALER, AppTab.POLYMARKET_DASHBOARD, AppTab.POLYMARKET_THINKING, AppTab.POLYMARKET_CONFIG, AppTab.POLYMARKET_PROMPT].includes(activeTab) ? 'flex flex-col h-full' : ''}`}>
-                    {/* Header for non-AGENT tabs */}
-                    {activeTab !== AppTab.AGENT && (
+                    {/* Header for non-AGENT tabs - Hide header when vault is locked */}
+                    {activeTab !== AppTab.AGENT && vault.isUnlocked && (
                         <header className="flex justify-between items-center mb-6 sticky top-0 z-40 bg-[#0f1015] pt-8 pb-4 -mx-4 px-4 md:px-0 md:-mx-0 transition-all shrink-0">
                             {/* Left: Title */}
                             <div className="flex items-center gap-3 min-w-0">
@@ -774,7 +774,19 @@ export default function App() {
                         </header>
                     )}
 
-                    {/* Content Area */}
+                    {/* Content Area - Security Guard: Only render if vault is unlocked OR on allowed pages */}
+                    {(() => {
+                        // Security: Define allowed tabs when vault is locked
+                        const unprotectedTabs = [AppTab.VAULT, AppTab.PRIVACY, AppTab.TERMS];
+                        const canRenderContent = !hasVault || vault.isUnlocked || unprotectedTabs.includes(activeTab);
+                        
+                        // If vault exists, is locked, and we're on a protected tab, render nothing
+                        // The useEffect will handle the redirect to VAULT
+                        if (!canRenderContent) {
+                            return null;
+                        }
+                        
+                        return (
                     <div className={`animate-fade-in ${[AppTab.VAULT_DEALER, AppTab.DEALER_DASHBOARD, AppTab.DEALER_THINKING, AppTab.DEALER_CONFIG, AppTab.DEALER_PROMPT, AppTab.POLYMARKET_DEALER, AppTab.POLYMARKET_DASHBOARD, AppTab.POLYMARKET_THINKING, AppTab.POLYMARKET_CONFIG, AppTab.POLYMARKET_PROMPT].includes(activeTab) ? 'flex-1 min-h-0' : ''}`}>
                         {activeTab === AppTab.DASHBOARD && (
                             <Dashboard
@@ -941,6 +953,8 @@ export default function App() {
                         {activeTab === AppTab.PRIVACY && <PrivacyPolicy onBack={() => setActiveTab(AppTab.DASHBOARD)} />}
                         {activeTab === AppTab.TERMS && <TermsOfUse onBack={() => setActiveTab(AppTab.DASHBOARD)} />}
                     </div>
+                        );
+                    })()}
                 </div>
                 {activeTab !== AppTab.AGENT && <Footer onNavigate={setActiveTab} />}
             </main>

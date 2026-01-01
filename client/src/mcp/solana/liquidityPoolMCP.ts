@@ -164,20 +164,28 @@ class LiquidityPoolMCP {
         options?: {
             timeframe?: TimeFrame;
             minTVL?: number;
+            minVolume?: number;
+            minAPY?: number;
+            protocol?: string[];
             limit?: number;
         }
     ): Promise<PoolRanking[]> {
-        // Use poolService.getTopPools which queries Supabase with proper sorting
         const timeframeMinutes = this.timeframeToMinutes(options?.timeframe || '24h');
-        const pools = await poolService.getTopPools(criteria, timeframeMinutes);
         
-        // Apply TVL filter if specified
-        let filteredPools = pools;
-        if (options?.minTVL) {
-            filteredPools = pools.filter(p => p.tvl >= options.minTVL!);
-        }
+        // Construct upstream filters
+        const filters = {
+            minTVL: options?.minTVL,
+            minVolume: options?.minVolume,
+            minAPY: options?.minAPY,
+            protocol: options?.protocol
+        };
 
-        return filteredPools.slice(0, options?.limit || 10).map((pool, index) => ({
+        // Fetch pools with upstream filtering applied
+        const pools = await poolService.getTopPools(criteria, timeframeMinutes, filters);
+        
+        const limit = options?.limit || 10;
+        
+        return pools.slice(0, limit).map((pool, index) => ({
             pool,
             rank: index + 1,
             score: this.getPoolScore(pool, criteria),
