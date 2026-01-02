@@ -234,9 +234,6 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
             totalVolume: volume,
             tradesWithPnl: countPnl
         });
-
-        // Downsample chart data if too many points?
-        setPnlHistory(chartData);
     }, []);
 
     // Fetch History
