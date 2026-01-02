@@ -133,6 +133,7 @@ export interface AnalysisResponse {
  */
 export type LogType = 'INFO' | 'WARNING' | 'ERROR' | 'SIGNAL' | 'REASONING';
 
+// ... existing code ...
 /**
  * Dealer log entry
  */
@@ -141,4 +142,30 @@ export interface DealerLogEntry {
     message: string;
     timestamp: number;
     context?: Record<string, any>;
+}
+
+/**
+ * Dealer Feedback Categories
+ */
+export type DealerFeedbackCategory =
+    | 'TOO_BULLISH'
+    | 'TOO_BEARISH'
+    | 'BAD_TIMING'
+    | 'WRONG_COIN'
+    | 'AGREE';
+
+/**
+ * Dealer Feedback Item
+ */
+export interface DealerFeedback {
+    id: string;
+    logId: string;              // Reference to the DealerLog
+    coin: string;               // e.g., "BTC"
+    action: TradeAction;        // What the AI suggested
+    category: DealerFeedbackCategory;
+    comment?: string;           // Optional, max 100 chars
+    contextSummary: string;     // Condensed context for AI
+    indicatorSnapshot: Record<string, number>;
+    timestamp: number;
+    expiresAt: number;          // 24h decay
 }

@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DealerLog } from '../../state/dealerStore';
-import { Brain, TrendingUp, TrendingDown, Minus, Clock, ExternalLink, ChevronDown, ChevronUp, Activity, DollarSign } from 'lucide-react';
+import { DealerFeedbackModal } from './DealerFeedbackModal';
+import { dealerFeedbackService } from '../../services/dealerFeedbackService';
+import { DealerFeedbackCategory } from '../../../../core/types/dealer.types';
+import { Brain, TrendingUp, TrendingDown, Minus, Clock, ExternalLink, ChevronDown, ChevronUp, Activity, DollarSign, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -12,6 +15,9 @@ interface DealerReasoningLogProps {
 
 export const DealerReasoningLog: React.FC<DealerReasoningLogProps> = ({ logs, onClearLogs }) => {
     const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+    const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+    const [selectedLogForFeedback, setSelectedLogForFeedback] = useState<DealerLog | null>(null);
+    const [initialFeedbackCategory, setInitialFeedbackCategory] = useState<DealerFeedbackCategory>('AGREE');
 
     // Filter only REASONING, SIGNAL, TRADE, and relevant INFO/WARNING logs for this view
     const reasoningLogs = logs.filter(l => {
@@ -47,6 +53,34 @@ export const DealerReasoningLog: React.FC<DealerReasoningLogProps> = ({ logs, on
         return String(value);
     };
 
+    const handleFeedbackClick = (log: DealerLog, category: DealerFeedbackCategory) => {
+        setSelectedLogForFeedback(log);
+        setInitialFeedbackCategory(category);
+        setFeedbackModalOpen(true);
+    };
+
+    const submitFeedback = async (category: DealerFeedbackCategory, comment: string) => {
+        if (!selectedLogForFeedback) return;
+
+        // Parse action and coin from message if possible, or use context
+        let action: any = 'HOLD';
+        let coin = 'UNKNOWN';
+
+        if (selectedLogForFeedback.details?.context) {
+            action = selectedLogForFeedback.details.context.action || action;
+            coin = selectedLogForFeedback.details.context.coin || coin;
+        }
+
+        await dealerFeedbackService.submitFeedback({
+            logId: selectedLogForFeedback.id,
+            coin,
+            action,
+            category,
+            comment,
+            context: selectedLogForFeedback.details?.context
+        });
+    };
+
     return (
         <div className="flex flex-col h-full overflow-hidden">
             <div className="p-4 border-b border-[#232328] flex justify-between items-center shrink-0">
@@ -74,6 +108,7 @@ export const DealerReasoningLog: React.FC<DealerReasoningLogProps> = ({ logs, on
                         const isExpanded = expandedLogId === log.id;
                         const hasContext = log.details?.context;
                         const context = log.details?.context;
+                        const isReasoning = log.type === 'REASONING';
 
                         return (
                             <div key={log.id} className="relative pl-6 pb-2 border-l border-[#232328] last:border-0 transition-colors group">
@@ -92,10 +127,45 @@ export const DealerReasoningLog: React.FC<DealerReasoningLogProps> = ({ logs, on
                                                 {log.type}
                                             </span>
                                         </div>
-                                        <span className="text-[10px] text-[#747580] flex items-center gap-1 font-mono">
-                                            <Clock size={10} />
-                                            {formatTime(log.timestamp)}
-                                        </span>
+                                        <div className="flex items-center gap-3">
+                                            {/* Feedback Buttons (Only for REASONING) */}
+                                            {isReasoning && (
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleFeedbackClick(log, 'AGREE'); }}
+                                                        className="p-1 hover:bg-[#34d399]/20 rounded text-[#34d399]/50 hover:text-[#34d399] transition-colors"
+                                                        title="Good Decision"
+                                                    >
+                                                        <ThumbsUp size={12} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleFeedbackClick(log, 'TOO_BULLISH'); }}
+                                                        className="p-1 hover:bg-yellow-400/20 rounded text-yellow-400/50 hover:text-yellow-400 transition-colors"
+                                                        title="Too Bullish/Bearish"
+                                                    >
+                                                        <Activity size={12} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleFeedbackClick(log, 'BAD_TIMING'); }}
+                                                        className="p-1 hover:bg-blue-400/20 rounded text-blue-400/50 hover:text-blue-400 transition-colors"
+                                                        title="Bad Timing"
+                                                    >
+                                                        <Clock size={12} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleFeedbackClick(log, 'WRONG_COIN'); }}
+                                                        className="p-1 hover:bg-red-400/20 rounded text-red-400/50 hover:text-red-400 transition-colors"
+                                                        title="Wrong Coin"
+                                                    >
+                                                        <ThumbsDown size={12} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                            <span className="text-[10px] text-[#747580] flex items-center gap-1 font-mono">
+                                                <Clock size={10} />
+                                                {formatTime(log.timestamp)}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <p className="text-sm text-[#a0a1a8] leading-relaxed">
@@ -158,11 +228,8 @@ export const DealerReasoningLog: React.FC<DealerReasoningLogProps> = ({ logs, on
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-1">
                                                         {Object.entries(context.macro.indicators).map(([name, data]: [string, any]) => {
-                                                            // Compare with main indicator if available
                                                             const mainValue = context.indicators?.[name]?.value;
                                                             const macroValue = data?.value || data;
-
-                                                            // Determine alignment (RSI-based detection)
                                                             let alignmentStatus = '';
                                                             const mainNum = typeof mainValue === 'number' ? mainValue :
                                                                 (typeof mainValue === 'object' && mainValue !== null ? Object.values(mainValue)[0] : null);
@@ -174,11 +241,10 @@ export const DealerReasoningLog: React.FC<DealerReasoningLogProps> = ({ logs, on
                                                                 const mainOversold = mainNum < 30;
                                                                 const macroOverbought = macroNum > 70;
                                                                 const macroOversold = macroNum < 30;
-
                                                                 if ((mainOverbought && macroOversold) || (mainOversold && macroOverbought)) {
-                                                                    alignmentStatus = '⚠️ '; // Conflict
+                                                                    alignmentStatus = '⚠️ '; 
                                                                 } else if ((mainOverbought && macroOverbought) || (mainOversold && macroOversold)) {
-                                                                    alignmentStatus = '✅ '; // Aligned
+                                                                    alignmentStatus = '✅ '; 
                                                                 }
                                                             }
 
@@ -242,6 +308,21 @@ export const DealerReasoningLog: React.FC<DealerReasoningLogProps> = ({ logs, on
                     })
                 )}
             </div>
+
+            {/* Feedback Modal */}
+            {selectedLogForFeedback && (
+                <DealerFeedbackModal
+                    isOpen={feedbackModalOpen}
+                    onClose={() => setFeedbackModalOpen(false)}
+                    onSubmit={submitFeedback}
+                    initialCategory={initialFeedbackCategory}
+                    context={{
+                        coin: selectedLogForFeedback.details?.context?.coin || 'Unknown',
+                        action: selectedLogForFeedback.details?.context?.action || 'Unknown',
+                        price: selectedLogForFeedback.details?.context?.currentPrice
+                    }}
+                />
+            )}
         </div>
     );
 };

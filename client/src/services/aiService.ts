@@ -586,7 +586,10 @@ export class AIService {
       3. CHECK PORTFOLIO LIMITS: Do not buy if 'maxPositions' is reached.
       4. CLOSE POSITIONS: If an open position hits target or stop loss criteria in your analysis, output "CLOSE".
       5. BANKROLL: Using 'manualBankroll' or 'availableBalance' from context, suggest a safe 'sizeUSDC' for new trades.
-      6. REASONING FORMAT: Start 'reason' with action: "LONG:", "SHORT:", "CLOSE:", or "WAIT:".
+      7. USER FEEDBACK (CRITICAL - LEARN FROM THIS):
+      ${(marketData as any).userFeedback || "No recent feedback."}
+
+      8. REASONING FORMAT (CRITICAL - MUST FOLLOW):
       7. LEVERAGE CONSTRAINT: If suggesting leverage, 'suggestedLeverage' MUST NOT exceed 'portfolio.settings.maxLeverage'. This is a hard limit set by the user.
       
       TRADING COSTS AWARENESS (CRITICAL FOR PROFIT CALCULATION):
@@ -773,6 +776,9 @@ export class AIService {
           - MANDATORY: If divergences are present, mention them in your reasoning.
           - RECOMMENDED: Mention indicator weights if they influenced your decision.
          - RECOMMENDED: If 'macro' data is present, mention macro alignment in your reasoning.
+
+      USER FEEDBACK (CRITICAL - LEARN FROM THIS):
+      ${(mergedMarketContext as any).userFeedback || "No recent feedback."}
 
       MACRO TIMEFRAME CONFIRMATION (CRITICAL FOR ACCURACY):
       - Each coin MAY include a 'macro' object with indicator values from a HIGHER timeframe.

@@ -564,7 +564,9 @@ export class DealerService {
                     autonomousMode: state.settings.autonomousIndicators,
                     availablePresets: state.settings.autonomousIndicators ? INDICATOR_PRESETS : undefined,
                     // Cycle summary context (AI memory from previous cycles)
-                    cycleSummary: cycleSummaryStore.getContextForAI('hyperliquid')
+                    cycleSummary: cycleSummaryStore.getContextForAI('hyperliquid'),
+                    // User Feedback Context (Learning from user corrections)
+                    userFeedback: await (await import('./dealerFeedbackService')).dealerFeedbackService.getContextForAI()
                 };
 
 

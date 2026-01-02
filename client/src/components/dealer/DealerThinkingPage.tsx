@@ -69,11 +69,15 @@ const CollapsibleLogItem: React.FC<{
     );
 };
 
+import { DealerFeedbackManager } from './DealerFeedbackManager';
+import { MessageSquare } from 'lucide-react';
+
 export const DealerThinkingPage: React.FC<DealerThinkingPageProps> = ({
     status,
     onClearLogs
 }) => {
     const [activeTab, setActiveTab] = useState<'thinking' | 'logs'>('thinking');
+    const [showFeedbackManager, setShowFeedbackManager] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const exportLogs = () => {
@@ -130,73 +134,107 @@ export const DealerThinkingPage: React.FC<DealerThinkingPageProps> = ({
                         </button>
                     </div>
 
-                    <AnimatePresence>
-                        {activeTab === 'logs' && (
-                            <motion.div
-                                className="flex items-center gap-2"
-                                initial={{ opacity: 0, x: 10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 10 }}
+                    <div className="flex items-center gap-2">
+                         {/* Feedback Manager Toggle */}
+                        {activeTab === 'thinking' && (
+                            <button
+                                onClick={() => setShowFeedbackManager(!showFeedbackManager)}
+                                className={`p-2 rounded border transition-colors flex items-center gap-2 text-[10px] uppercase tracking-wider font-semibold ${
+                                    showFeedbackManager 
+                                    ? 'bg-[#E7FE55] text-black border-[#E7FE55]' 
+                                    : 'bg-[#1a1b21] text-[#747580] border-[#232328] hover:text-white'
+                                }`}
+                                title="Manage Feedback"
                             >
-                                <button
-                                    onClick={onClearLogs}
-                                    className="p-2 rounded hover:bg-red-500/10 text-[#747580] hover:text-red-400 transition-colors border border-[#232328]"
-                                    title="Clear Logs"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
-                                <button
-                                    onClick={exportLogs}
-                                    className="p-2 rounded hover:bg-[#1a1b21] text-[#747580] hover:text-white transition-colors border border-[#232328]"
-                                    title="Export JSON"
-                                >
-                                    <Download className="h-4 w-4" />
-                                </button>
-                            </motion.div>
+                                <MessageSquare className="h-4 w-4" />
+                                Feedback
+                            </button>
                         )}
-                    </AnimatePresence>
+                        
+                        <AnimatePresence>
+                            {activeTab === 'logs' && (
+                                <motion.div
+                                    className="flex items-center gap-2"
+                                    initial={{ opacity: 0, x: 10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                >
+                                    <button
+                                        onClick={onClearLogs}
+                                        className="p-2 rounded hover:bg-red-500/10 text-[#747580] hover:text-red-400 transition-colors border border-[#232328]"
+                                        title="Clear Logs"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                        onClick={exportLogs}
+                                        className="p-2 rounded hover:bg-[#1a1b21] text-[#747580] hover:text-white transition-colors border border-[#232328]"
+                                        title="Export JSON"
+                                    >
+                                        <Download className="h-4 w-4" />
+                                    </button>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
 
             {/* Content Card */}
-            <div className="glass-panel flex-1 min-h-0 overflow-hidden flex flex-col">
-                {activeTab === 'thinking' && (
-                    <DealerReasoningLog
-                        logs={status.logs}
-                        onClearLogs={onClearLogs}
-                    />
-                )}
+            <div className="glass-panel flex-1 min-h-0 overflow-hidden flex">
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    {activeTab === 'thinking' && (
+                        <DealerReasoningLog
+                            logs={status.logs}
+                            onClearLogs={onClearLogs}
+                        />
+                    )}
 
-                {activeTab === 'logs' && (
-                    <div className="flex-1 min-h-0 relative">
-                        <div
-                            ref={scrollRef}
-                            className="absolute inset-0 overflow-y-auto custom-scrollbar"
-                        >
-                            {status.logs.length === 0 ? (
-                                <motion.div
-                                    className="h-full flex flex-col items-center justify-center text-[#747580] gap-3 py-12"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                >
-                                    <Terminal className="h-10 w-10 opacity-30" />
-                                    <p className="text-sm">No operations recorded yet.</p>
-                                </motion.div>
-                            ) : (
-                                <AnimatePresence>
-                                    {status.logs.map((log, index) => (
-                                        <CollapsibleLogItem
-                                            key={log.id}
-                                            log={log}
-                                            index={index}
-                                            getLogBadgeVariant={getLogBadgeVariant}
-                                        />
-                                    ))}
-                                </AnimatePresence>
-                            )}
+                    {activeTab === 'logs' && (
+                        <div className="flex-1 min-h-0 relative">
+                            <div
+                                ref={scrollRef}
+                                className="absolute inset-0 overflow-y-auto custom-scrollbar"
+                            >
+                                {status.logs.length === 0 ? (
+                                    <motion.div
+                                        className="h-full flex flex-col items-center justify-center text-[#747580] gap-3 py-12"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                    >
+                                        <Terminal className="h-10 w-10 opacity-30" />
+                                        <p className="text-sm">No operations recorded yet.</p>
+                                    </motion.div>
+                                ) : (
+                                    <AnimatePresence>
+                                        {status.logs.map((log, index) => (
+                                            <CollapsibleLogItem
+                                                key={log.id}
+                                                log={log}
+                                                index={index}
+                                                getLogBadgeVariant={getLogBadgeVariant}
+                                            />
+                                        ))}
+                                    </AnimatePresence>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
+
+                {/* Feedback Manager Sidebar */}
+                <AnimatePresence>
+                    {activeTab === 'thinking' && showFeedbackManager && (
+                        <motion.div
+                            initial={{ width: 0, opacity: 0 }}
+                            animate={{ width: 300, opacity: 1 }}
+                            exit={{ width: 0, opacity: 0 }}
+                            className="h-full border-l border-[#232328] overflow-hidden"
+                        >
+                            <DealerFeedbackManager onClose={() => setShowFeedbackManager(false)} />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );
