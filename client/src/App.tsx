@@ -18,7 +18,8 @@ import { useScheduler } from './hooks/useScheduler';
 import { useAgent } from './hooks/useAgent';
 import { usePolymarket } from './hooks/usePolymarket';
 import { ConversationService } from './services/conversationService';
-import { X, RefreshCw, Menu, Settings, ChevronDown, ChevronUp, Clock, CalendarClock, Plus, LogOut, Shield } from 'lucide-react';
+import { X, RefreshCw, Menu, Settings, ChevronDown, ChevronUp, Clock, CalendarClock, Plus, LogOut, Shield, MessageSquare } from 'lucide-react';
+import { FeedbackModal } from './components/shared/FeedbackModal';
 
 import { HistoryPage } from './components/agent/HistoryPage';
 import { ConfigurationPage } from './components/configuration/ConfigurationPage';
@@ -39,6 +40,7 @@ export default function App() {
     const [notifications, setNotifications] = useState<{ id: number, message: string }[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
     // Configuration Tab State
     const [activeConfigTab, setActiveConfigTab] = useState<'providers' | 'user'>('providers');
@@ -341,6 +343,15 @@ export default function App() {
                                     Online
                                 </div>
                             </div>
+
+                            {/* Feedback Button */}
+                            <button
+                                onClick={() => setShowFeedbackModal(true)}
+                                className="p-2 rounded-lg hover:bg-[#1a1b21] transition-colors text-[#747580] hover:text-white"
+                                title="Send Feedback"
+                            >
+                                <MessageSquare size={18} />
+                            </button>
 
                             {/* User Profile Menu */}
                             <div className="relative">
@@ -690,6 +701,15 @@ export default function App() {
                                     </div>
                                 </div>
 
+                                {/* Feedback Button */}
+                                <button
+                                    onClick={() => setShowFeedbackModal(true)}
+                                    className="p-2 rounded-lg hover:bg-[#1a1b21] transition-colors text-[#747580] hover:text-white"
+                                    title="Send Feedback"
+                                >
+                                    <MessageSquare size={18} />
+                                </button>
+
                                 {/* User Profile Menu */}
                                 <div className="relative">
                                     <button
@@ -891,6 +911,7 @@ export default function App() {
                                 unlockVault={unlockVault}
                                 hasVault={!!(vault.publicKey || vault.hlPublicKey)}
                                 onNavigate={setActiveTab}
+                                conversationId={activeConversationId}
                             />
                         )}
 
@@ -1019,6 +1040,12 @@ export default function App() {
 
             {/* Legal Consent Modal */}
             <ConsentModal userId={user?.uid || null} />
+
+            {/* Feedback Modal */}
+            <FeedbackModal
+                isOpen={showFeedbackModal}
+                onClose={() => setShowFeedbackModal(false)}
+            />
         </div>
     );
 }

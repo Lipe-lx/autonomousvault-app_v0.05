@@ -1,12 +1,14 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Bot, Send, User, Sparkles, CheckCircle, AlertTriangle, Clock, Info, Lock, Unlock, Settings, ArrowRight } from 'lucide-react';
+import { Bot, Send, User, Sparkles, CheckCircle, AlertTriangle, Clock, Info, Lock, Unlock, Settings, ArrowRight, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { AgentMessage, AppTab } from '../../types';
 import { ActionSummaryPanel } from './ActionSummaryPanel';
 import { StructuredResultRenderer } from '../chat/StructuredResultRenderer';
 import { ChatSuggestions } from '../chat/ChatSuggestions';
+import { NegativeFeedbackModal } from '../shared/NegativeFeedbackModal';
+import { feedbackService } from '../../services/supabase/feedbackService';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card } from '../ui/card';
@@ -27,6 +29,7 @@ interface AgentConsoleProps {
     unlockVault: () => void;
     hasVault: boolean;
     onNavigate?: (tab: AppTab) => void;
+    conversationId?: string;
 }
 
 export const AgentConsole: React.FC<AgentConsoleProps> = ({
@@ -42,9 +45,55 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
     setPassword,
     unlockVault,
     hasVault,
-    onNavigate
+    onNavigate,
+    conversationId
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
+    
+    // State for message ratings
+    const [messageRatings, setMessageRatings] = useState<Map<string, 'positive' | 'negative'>>(new Map());
+    const [negativeFeedbackMessageId, setNegativeFeedbackMessageId] = useState<string | null>(null);
+
+    // Handle rating submission
+    const handleRating = async (messageId: string, rating: 'positive' | 'negative') => {
+        const currentRating = messageRatings.get(messageId);
+        
+        // If clicking the same rating, toggle it off (UX only - data already sent)
+        if (currentRating === rating) {
+            setMessageRatings(prev => {
+                const newMap = new Map(prev);
+                newMap.delete(messageId);
+                return newMap;
+            });
+            return;
+        }
+
+        if (rating === 'negative') {
+            // Open modal for optional explanation
+            setNegativeFeedbackMessageId(messageId);
+        } else {
+            // Submit positive rating immediately
+            setMessageRatings(prev => new Map(prev).set(messageId, rating));
+            await feedbackService.submitMessageRating({
+                messageId,
+                conversationId: conversationId || 'unknown',
+                rating: 'positive'
+            });
+        }
+    };
+
+    const handleNegativeFeedbackSubmit = async (feedback: string) => {
+        if (!negativeFeedbackMessageId) return;
+        
+        setMessageRatings(prev => new Map(prev).set(negativeFeedbackMessageId, 'negative'));
+        await feedbackService.submitMessageRating({
+            messageId: negativeFeedbackMessageId,
+            conversationId: conversationId || 'unknown',
+            rating: 'negative',
+            feedback
+        });
+        setNegativeFeedbackMessageId(null);
+    };
 
     const hasActions = useMemo(() => {
         return messages.some(msg =>
@@ -172,8 +221,8 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.05 }}
                             >
-                                <div className={cn(
-                                    "flex gap-4",
+                            <div className={cn(
+                                    "flex gap-4 group",
                                     hasActions ? "max-w-[85%]" : "max-w-[90%]",
                                     msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'
                                 )}>
@@ -282,9 +331,44 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
                                                 </ReactMarkdown>
                                             </div>
                                         </div>
-                                        <span className="text-[10px] text-[#747580] mt-1.5 px-1">
-                                            {new Date(msg.timestamp).toLocaleTimeString()}
-                                        </span>
+                                        <div className="flex items-center justify-between w-full mt-1.5 px-1">
+                                            <span className="text-[10px] text-[#747580]">
+                                                {new Date(msg.timestamp).toLocaleTimeString()}
+                                            </span>
+                                        
+                                            {/* Thumbs rating for model messages */}
+                                            {msg.role === 'model' && (
+                                                <div className={cn(
+                                                    "flex items-center gap-1 transition-opacity",
+                                                    messageRatings.has(msg.id) ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                                )}>
+                                                <button
+                                                    onClick={() => handleRating(msg.id, 'positive')}
+                                                    className={cn(
+                                                        "p-1 rounded transition-colors",
+                                                        messageRatings.get(msg.id) === 'positive'
+                                                            ? "text-[#E7FE55]"
+                                                            : "text-[#747580] hover:text-[#E7FE55] hover:bg-[#E7FE55]/10"
+                                                    )}
+                                                    title="Good response"
+                                                >
+                                                    <ThumbsUp size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRating(msg.id, 'negative')}
+                                                    className={cn(
+                                                        "p-1 rounded transition-colors",
+                                                        messageRatings.get(msg.id) === 'negative'
+                                                            ? "text-red-400"
+                                                            : "text-[#747580] hover:text-red-400 hover:bg-red-400/10"
+                                                    )}
+                                                    title="Bad response"
+                                                >
+                                                    <ThumbsDown size={14} />
+                                                </button>
+                                            </div>
+                                        )}
+                                        </div>
                                     </div>
                                 </div>
                             </motion.div>
@@ -363,6 +447,13 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Negative Feedback Modal */}
+            <NegativeFeedbackModal
+                isOpen={negativeFeedbackMessageId !== null}
+                onClose={() => setNegativeFeedbackMessageId(null)}
+                onSubmit={handleNegativeFeedbackSubmit}
+            />
         </div>
     );
 };
