@@ -10,7 +10,6 @@ import { DealerOpenOrders } from './DealerOpenOrders';
 import { DealerState, DealerLog } from '../../state/dealerStore';
 import { useCycleSummary } from '../../hooks/useCycleSummary';
 import { hyperliquidService } from '../../services/hyperliquidService';
-import { profitHistoryService, ProfitSnapshot } from '../../services/profitHistoryService';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
     BarChart, Bar, Cell
@@ -73,7 +72,6 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
     setActiveTab
 }) => {
     const [fills, setFills] = useState<TradeFill[]>([]);
-    const [pnlHistory, setPnlHistory] = useState<ProfitSnapshot[]>([]);
     const [fillsPage, setFillsPage] = useState(0);
     const [stats, setStats] = useState({
         totalPnl: 0,
@@ -123,24 +121,38 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
     const [showSummary, setShowSummary] = useState(false);
     const { summary: cycleSummary, isGenerating: isSummaryGenerating, cycleCount, lastUpdate: summaryLastUpdate, hasSummary } = useCycleSummary('hyperliquid');
 
-    // Compute profit from snapshot history (last - first snapshot value)
-    const snapshotProfit = useMemo(() => {
-        if (!pnlHistory || pnlHistory.length < 2) return 0;
-        const first = pnlHistory[0];
-        const last = pnlHistory[pnlHistory.length - 1];
-        // Validate that both values are valid numbers
-        if (typeof first?.portfolioValue !== 'number' || typeof last?.portfolioValue !== 'number') {
-            return 0;
-        }
-        const profit = last.portfolioValue - first.portfolioValue;
-        return isNaN(profit) ? 0 : profit;
-    }, [pnlHistory]);
+    // Compute cumulative realized PnL chart data from fills (only closed trades with closedPnl)
+    const realizedPnlChartData = useMemo(() => {
+        // Filter fills to only those after baseline and with closedPnl
+        const filteredFills = (baselineTimestamp
+            ? fills.filter(fill => fill.time >= baselineTimestamp)
+            : fills
+        ).filter(fill => parseFloat(fill.closedPnl || '0') !== 0);
 
-    // Check if we have valid chart data
+        if (filteredFills.length === 0) return [];
+
+        // Sort by time (should already be sorted, but ensure)
+        const sortedFills = [...filteredFills].sort((a, b) => a.time - b.time);
+
+        // Build cumulative PnL array
+        let cumulativePnl = 0;
+        return sortedFills.map(fill => {
+            const pnl = parseFloat(fill.closedPnl || '0');
+            const fee = parseFloat(fill.fee || '0');
+            cumulativePnl += (pnl - fee);
+            return {
+                time: fill.time,
+                date: new Date(fill.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                pnl: cumulativePnl,
+                trade: `${fill.coin} ${fill.side === 'A' ? 'SELL' : 'BUY'}`
+            };
+        });
+    }, [fills, baselineTimestamp]);
+
+    // Check if we have valid chart data (at least 2 trades with realized PnL)
     const hasValidChartData = useMemo(() => {
-        return pnlHistory && pnlHistory.length >= 2 && 
-            pnlHistory.every(s => typeof s?.timestamp === 'number' && typeof s?.portfolioValue === 'number');
-    }, [pnlHistory]);
+        return realizedPnlChartData.length >= 2;
+    }, [realizedPnlChartData]);
 
     // Reasoning navigation state
     const [reasoningIndex, setReasoningIndex] = useState(0);
@@ -189,42 +201,76 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
         return reversedFills.slice(start, start + FILLS_PER_PAGE);
     }, [reversedFills, fillsPage]);
 
-    // Process PnL data with baseline filtering
+    // Process fills data to calculate stats (Win Rate, Volume, etc)
+    // Groups fills by trade (same coin within TIME_WINDOW_MS) for accurate Win Rate
     const processPnlData = useCallback((fillData: TradeFill[], baseline: number | null) => {
         // Filter fills to only include those after the baseline timestamp
         const filteredFills = baseline
             ? fillData.filter(fill => fill.time >= baseline)
             : fillData;
 
-        let cumulativePnl = 0;
-        let wins = 0;
-        let losses = 0;
-        let volume = 0;
-        let countPnl = 0;
+        // Time window to group fills as same trade (60 seconds)
+        const TIME_WINDOW_MS = 60000;
 
-        const chartData = filteredFills.map(fill => {
+        // Group fills by trade: same coin + closedPnl != 0 + within time window
+        interface TradeGroup {
+            coin: string;
+            startTime: number;
+            totalPnl: number;
+            totalFee: number;
+            fillCount: number;
+        }
+
+        const trades: TradeGroup[] = [];
+        let cumulativePnl = 0;
+        let volume = 0;
+
+        // Sort fills by time to ensure proper grouping
+        const sortedFills = [...filteredFills].sort((a, b) => a.time - b.time);
+
+        sortedFills.forEach(fill => {
             const pnl = parseFloat(fill.closedPnl || '0');
             const fee = parseFloat(fill.fee || '0');
-            const netPnl = pnl - fee; // Net PnL = Closed PnL - Fee
-
-            // Win/Loss based on NET PnL (after fees)
-            // Only count trades that actually closed a position (have closedPnl)
-            if (pnl !== 0) {
-                countPnl++;
-                if (netPnl > 0) wins++;
-                else if (netPnl < 0) losses++;
-                // If netPnl === 0 exactly, it's breakeven - don't count as win or loss
-            }
-
-            cumulativePnl += netPnl; // Net PnL after fees
+            
+            // Always count volume
             volume += (parseFloat(fill.px) * parseFloat(fill.sz));
+            
+            // Only process fills with closed PnL (position closes)
+            if (pnl !== 0) {
+                cumulativePnl += (pnl - fee);
+                
+                // Check if this fill belongs to an existing trade group
+                const existingTrade = trades.find(t => 
+                    t.coin === fill.coin && 
+                    (fill.time - t.startTime) < TIME_WINDOW_MS
+                );
 
-            return {
-                time: fill.time,
-                date: new Date(fill.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                pnl: cumulativePnl,
-                rawPnl: pnl
-            };
+                if (existingTrade) {
+                    // Add to existing trade group
+                    existingTrade.totalPnl += pnl;
+                    existingTrade.totalFee += fee;
+                    existingTrade.fillCount++;
+                } else {
+                    // Create new trade group
+                    trades.push({
+                        coin: fill.coin,
+                        startTime: fill.time,
+                        totalPnl: pnl,
+                        totalFee: fee,
+                        fillCount: 1
+                    });
+                }
+            }
+        });
+
+        // Calculate Win Rate from grouped trades
+        let wins = 0;
+        let losses = 0;
+
+        trades.forEach(trade => {
+            const netPnl = trade.totalPnl - trade.totalFee;
+            if (netPnl > 0) wins++;
+            else if (netPnl < 0) losses++;
         });
 
         const totalTrades = wins + losses;
@@ -232,7 +278,7 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
             totalPnl: cumulativePnl,
             winRate: totalTrades > 0 ? (wins / totalTrades) * 100 : 0,
             totalVolume: volume,
-            tradesWithPnl: countPnl
+            tradesWithPnl: trades.length
         });
     }, []);
 
@@ -283,24 +329,6 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
         return () => clearInterval(interval);
     }, [vaultAddress, baselineTimestamp, baselineLoaded, processPnlData]);
 
-    // Load REAL profit history from profitHistoryService
-    useEffect(() => {
-        // Wait for baseline to load before fetching history to prevent flicker
-        if (!baselineLoaded) return;
-
-        const loadProfitHistory = async () => {
-            try {
-                const history = await profitHistoryService.getHistory(baselineTimestamp || undefined);
-                setPnlHistory(history);
-            } catch (e) {
-                console.warn('[Dashboard] Failed to load profit history:', e);
-            }
-        };
-        loadProfitHistory();
-        // Refresh every 30s to pick up new snapshots
-        const interval = setInterval(loadProfitHistory, 30000);
-        return () => clearInterval(interval);
-    }, [baselineTimestamp, baselineLoaded]);
 
     // Recalculate stats when baseline changes (for fills-based stats)
     useEffect(() => {
@@ -384,8 +412,8 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
                                     <RotateCcw size={12} />
                                 </button>
                             </div>
-                            <div className={`text-xl font-semibold font-mono tracking-tight ${snapshotProfit >= 0 ? 'text-[#34d399]' : 'text-red-400'}`}>
-                                {snapshotProfit >= 0 ? '+' : ''}{snapshotProfit.toFixed(2)} USD
+                            <div className={`text-xl font-semibold font-mono tracking-tight ${stats.totalPnl >= 0 ? 'text-[#34d399]' : 'text-red-400'}`}>
+                                {stats.totalPnl >= 0 ? '+' : ''}{stats.totalPnl.toFixed(2)} USD
                             </div>
                             {baselineTimestamp && (
                                 <div className="text-[8px] text-[#3a3b42] mt-1" title={`Measuring since ${new Date(baselineTimestamp).toLocaleString()}`}>
@@ -450,12 +478,7 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
                         <div className="flex-1 w-full">
                             {hasValidChartData ? (
                             <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
-                                    <AreaChart data={pnlHistory.map((s) => ({
-                                        time: s.timestamp,
-                                        date: new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                                        pnl: s.portfolioValue - pnlHistory[0].portfolioValue,
-                                        portfolioValue: s.portfolioValue
-                                    }))}>
+                                    <AreaChart data={realizedPnlChartData}>
                                         <defs>
                                             <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#E7FE55" stopOpacity={0.2} />
@@ -469,8 +492,8 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
                                             contentStyle={{ backgroundColor: '#14151a', borderColor: '#232328', borderRadius: '4px' }}
                                             itemStyle={{ color: '#E7FE55' }}
                                             formatter={(value: number, name: string) => [
-                                                name === 'pnl' ? `${value >= 0 ? '+' : ''}$${value.toFixed(2)}` : `$${value.toFixed(2)}`,
-                                                name === 'pnl' ? 'Profit/Loss' : 'Portfolio Value'
+                                                `${value >= 0 ? '+' : ''}$${value.toFixed(2)}`,
+                                                'Realized Profit'
                                             ]}
                                         />
                                         <Area type="monotone" dataKey="pnl" stroke="#E7FE55" strokeWidth={1.5} fillOpacity={1} fill="url(#colorPnl)" />
@@ -479,8 +502,8 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center text-[#747580]">
                                     <BarChart2 className="h-8 w-8 mb-2 opacity-40" />
-                                    <span className="text-[11px]">Collecting performance data...</span>
-                                    <span className="text-[9px] opacity-60 mt-1">Data appears when dealer is active</span>
+                                    <span className="text-[11px]">No closed trades yet...</span>
+                                    <span className="text-[9px] opacity-60 mt-1">Chart shows realized profit from closed positions</span>
                                 </div>
                             )}
                         </div>
