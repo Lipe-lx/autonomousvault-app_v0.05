@@ -11,11 +11,12 @@ import {
     Droplets,
     ChevronDown,
     ChevronRight,
-    Briefcase
+    Briefcase,
+    Info
 } from 'lucide-react';
 import { AppTab } from '../../types';
 import { hyperliquidService } from '../../services/hyperliquidService';
-import { TooltipProvider } from '../ui/tooltip';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -36,36 +37,52 @@ interface NavItemProps {
     isActive: boolean;
     onClick: () => void;
     isSubItem?: boolean;
+    infoTooltip?: string;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, onClick, isSubItem = false }) => (
-    <button
-        onClick={onClick}
-        className={cn(
-            "w-full flex items-center gap-3 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
-            isSubItem ? "px-3 py-2 pl-6" : "px-3 py-2.5",
-            isActive
-                ? "text-white bg-[#1a1b21]/80 backdrop-blur-sm"
-                : "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40"
+const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, onClick, isSubItem = false, infoTooltip }) => (
+    <div className="relative flex items-center group">
+        <button
+            onClick={onClick}
+            className={cn(
+                "w-full flex items-center gap-3 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
+                isSubItem ? "px-3 py-2 pl-6" : "px-3 py-2.5",
+                isActive
+                    ? "text-white bg-[#1a1b21]/80 backdrop-blur-sm"
+                    : "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40",
+                infoTooltip && "pr-8"
+            )}
+            title={label}
+        >
+            {/* Active indicator bar */}
+            {isActive && (
+                <div className={cn(
+                    "absolute top-1/2 -translate-y-1/2 w-1 rounded-full bg-[#E7FE55]",
+                    isSubItem ? "left-0 h-4" : "left-0 h-6"
+                )} />
+            )}
+            <span className={cn(
+                "flex items-center justify-center transition-colors",
+                !isSubItem && "ml-1",
+                isActive && "text-[#E7FE55]"
+            )}>
+                {icon}
+            </span>
+            <span className="tracking-wide">{label}</span>
+        </button>
+        {infoTooltip && (
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#4a4b53] hover:text-[#E7FE55] transition-all duration-200 cursor-help hover:scale-110 opacity-0 group-hover:opacity-100">
+                        <Info size={14} strokeWidth={2} />
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-[250px] text-xs leading-relaxed bg-[#1a1b21] border-[#2a2b30] text-[#a0a1a8]">
+                    {infoTooltip}
+                </TooltipContent>
+            </Tooltip>
         )}
-        title={label}
-    >
-        {/* Active indicator bar */}
-        {isActive && (
-            <div className={cn(
-                "absolute top-1/2 -translate-y-1/2 w-1 rounded-full bg-[#E7FE55]",
-                isSubItem ? "left-0 h-4" : "left-0 h-6"
-            )} />
-        )}
-        <span className={cn(
-            "flex items-center justify-center transition-colors",
-            !isSubItem && "ml-1",
-            isActive && "text-[#E7FE55]"
-        )}>
-            {icon}
-        </span>
-        <span className="tracking-wide">{label}</span>
-    </button>
+    </div>
 );
 
 interface NavGroupProps {
@@ -75,42 +92,58 @@ interface NavGroupProps {
     onToggle: () => void;
     hasActiveChild: boolean;
     children: React.ReactNode;
+    infoTooltip?: string;
 }
 
-const NavGroup: React.FC<NavGroupProps> = ({ icon, label, isExpanded, onToggle, hasActiveChild, children }) => (
+const NavGroup: React.FC<NavGroupProps> = ({ icon, label, isExpanded, onToggle, hasActiveChild, children, infoTooltip }) => (
     <div className="space-y-0.5">
-        <button
-            onClick={onToggle}
-            className={cn(
-                "w-full flex items-center justify-between px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
-                hasActiveChild
-                    ? "text-white bg-[#1a1b21]/80 backdrop-blur-sm"
-                    : "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40"
-            )}
-            title={label}
-        >
-            <div className="flex items-center gap-3">
-                {/* Active indicator bar */}
-                {hasActiveChild && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#E7FE55] rounded-full" />
+        <div className="relative flex items-center group">
+            <button
+                onClick={onToggle}
+                className={cn(
+                    "w-full flex items-center justify-between px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
+                    hasActiveChild
+                        ? "text-white bg-[#1a1b21]/80 backdrop-blur-sm"
+                        : "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40",
+                    infoTooltip && "pr-12"
                 )}
-                <span className={cn(
-                    "flex items-center justify-center transition-colors ml-1",
-                    hasActiveChild && "text-[#E7FE55]"
-                )}>
-                    {icon}
-                </span>
-                <span className="tracking-wide">{label}</span>
-            </div>
-            <motion.span
-                initial={false}
-                animate={{ rotate: isExpanded ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-                className="text-[#5a5b63]"
+                title={label}
             >
-                <ChevronDown size={14} />
-            </motion.span>
-        </button>
+                <div className="flex items-center gap-3">
+                    {/* Active indicator bar */}
+                    {hasActiveChild && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#E7FE55] rounded-full" />
+                    )}
+                    <span className={cn(
+                        "flex items-center justify-center transition-colors ml-1",
+                        hasActiveChild && "text-[#E7FE55]"
+                    )}>
+                        {icon}
+                    </span>
+                    <span className="tracking-wide">{label}</span>
+                </div>
+                <motion.span
+                    initial={false}
+                    animate={{ rotate: isExpanded ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-[#5a5b63]"
+                >
+                    <ChevronDown size={14} />
+                </motion.span>
+            </button>
+            {infoTooltip && (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[#4a4b53] hover:text-[#E7FE55] transition-all duration-200 cursor-help hover:scale-110 opacity-0 group-hover:opacity-100">
+                            <Info size={14} strokeWidth={2} />
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[250px] text-xs leading-relaxed bg-[#1a1b21] border-[#2a2b30] text-[#a0a1a8]">
+                        {infoTooltip}
+                    </TooltipContent>
+                </Tooltip>
+            )}
+        </div>
         <AnimatePresence initial={false}>
             {isExpanded && (
                 <motion.div
@@ -247,6 +280,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         label="Vault Operator"
                         isActive={isManagerActive}
                         onClick={() => handleNavigation(AppTab.AGENT)}
+                        infoTooltip="Manual control and oversight of your vault. Execute discretionary operations, manage capital flows, and supervise the Vault Dealer."
                     />
 
                     {/* Vault Dealer - Parent with expandable subpages */}
@@ -256,6 +290,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         isExpanded={isDealerExpanded}
                         onToggle={() => setIsDealerExpanded(!isDealerExpanded)}
                         hasActiveChild={isAnyDealerActive}
+                        infoTooltip="Autonomous trading agent. Operates continuously within your predefined strategy and risk limits."
                     >
                         {/* Hyperliquid */}
                         <NavItem

@@ -58,6 +58,15 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
 
     const handlePresetChange = (preset: PolymarketPresetName) => {
         if (preset === 'custom') return;
+        
+        // Toggle off if already selected
+        if (localSettings.selectedPreset === preset) {
+            handleLocalChange({
+                selectedPreset: 'custom'
+            });
+            return;
+        }
+
         const presetConfig = POLYMARKET_PRESETS[preset];
         if (!presetConfig) return;
 

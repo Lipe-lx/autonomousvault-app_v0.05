@@ -109,13 +109,19 @@ export const DealerPromptPage: React.FC<DealerPromptPageProps> = ({
             {/* Compact Header Row */}
             <div className="glass-panel p-4 shrink-0">
                 <div className="flex items-center justify-between">
-                    {/* Left: Title + Mode Badge */}
-                    <div className="flex items-center gap-4">
+                    {/* Left: Title + Disclaimer */}
+                    <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-2">
                             <Sparkles className="h-4 w-4 text-[#E7FE55]" />
                             <span className="text-sm font-semibold text-white">Strategy Prompt</span>
                         </div>
+                        <span className="text-[12px] text-[#747580] font-medium leading-tight">
+                            Presets are examples only. You are responsible for your strategy prompt.
+                        </span>
+                    </div>
 
+                    {/* Right: Mode + Save Button */}
+                    <div className="flex items-center gap-4">
                         {/* Current Mode Badge - Compact */}
                         <div className={`
                             inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider
@@ -133,22 +139,21 @@ export const DealerPromptPage: React.FC<DealerPromptPageProps> = ({
                         {strategyDirty && (
                             <span className="text-[9px] text-amber-500 uppercase tracking-wider font-medium">• Unsaved</span>
                         )}
-                    </div>
 
-                    {/* Right: Save Button */}
-                    <button
-                        onClick={handleStrategySave}
-                        disabled={!strategyDirty}
-                        className={`
-                            flex items-center gap-2 px-4 py-1.5 rounded text-[10px] font-semibold uppercase tracking-wider transition-all
-                            ${strategyDirty
-                                ? 'bg-[#E7FE55] hover:bg-[#f0ff7a] text-black'
-                                : 'bg-[#1a1b21] text-[#3a3b42] cursor-not-allowed'}
-                        `}
-                    >
-                        <Save className="h-3.5 w-3.5" />
-                        Save
-                    </button>
+                        <button
+                            onClick={handleStrategySave}
+                            disabled={!strategyDirty}
+                            className={`
+                                flex items-center gap-2 px-4 py-1.5 rounded text-[10px] font-semibold uppercase tracking-wider transition-all
+                                ${strategyDirty
+                                    ? 'bg-[#E7FE55] hover:bg-[#f0ff7a] text-black'
+                                    : 'bg-[#1a1b21] text-[#3a3b42] cursor-not-allowed'}
+                            `}
+                        >
+                            <Save className="h-3.5 w-3.5" />
+                            Save
+                        </button>
+                    </div>
                 </div>
             </div>
 
