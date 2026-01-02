@@ -1,7 +1,7 @@
 // SolanaDealerPolicyPage.tsx
 // Policy Engine configuration page - Compact single-page layout
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Shield, 
     Save, 
@@ -17,10 +17,14 @@ import {
 } from 'lucide-react';
 import { LPPolicyRules, DEFAULT_LP_POLICY, LPOperationScope, LP_SCOPE_METADATA } from '../../types/solanaLPTypes';
 import { solanaDealerStore } from '../../state/solanaDealerStore';
+import { FormattedNumberInput } from '../ui/FormattedNumberInput';
+
 
 interface SolanaDealerPolicyPageProps {
     policy: LPPolicyRules;
 }
+
+
 
 export const SolanaDealerPolicyPage: React.FC<SolanaDealerPolicyPageProps> = ({
     policy
@@ -29,6 +33,11 @@ export const SolanaDealerPolicyPage: React.FC<SolanaDealerPolicyPageProps> = ({
     const [newAllowToken, setNewAllowToken] = useState('');
     const [newBlockToken, setNewBlockToken] = useState('');
     const [hasChanges, setHasChanges] = useState(false);
+
+    // Update local policy when prop changes (e.g. after loading from storage)
+    useEffect(() => {
+        setLocalPolicy(policy);
+    }, [policy]);
 
     const updatePolicy = (updates: Partial<LPPolicyRules>) => {
         setLocalPolicy(prev => ({ ...prev, ...updates }));
@@ -147,9 +156,11 @@ export const SolanaDealerPolicyPage: React.FC<SolanaDealerPolicyPageProps> = ({
                     <div className="flex items-center justify-between z-10 mt-auto">
                         <div className="flex items-baseline gap-1">
                             <span className="text-lg font-bold text-[#E7FE55]">$</span>
-                            <span className="text-2xl font-bold text-white font-mono">
-                                {localPolicy.minTVLRequired.toLocaleString()}
-                            </span>
+                            <FormattedNumberInput
+                                className="text-2xl font-bold text-white font-mono bg-transparent outline-none w-32 appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                value={localPolicy.minTVLRequired}
+                                onChange={(val) => updatePolicy({ minTVLRequired: val })}
+                            />
                         </div>
                         
                         <div className="flex flex-col gap-0.5">
@@ -182,9 +193,11 @@ export const SolanaDealerPolicyPage: React.FC<SolanaDealerPolicyPageProps> = ({
                     <div className="flex items-center justify-between z-10 mt-auto">
                         <div className="flex items-baseline gap-1">
                             <span className="text-lg font-bold text-[#E7FE55]">$</span>
-                            <span className="text-2xl font-bold text-white font-mono">
-                                {localPolicy.minVolumeRequired.toLocaleString()}
-                            </span>
+                            <FormattedNumberInput
+                                className="text-2xl font-bold text-white font-mono bg-transparent outline-none w-32 appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                value={localPolicy.minVolumeRequired}
+                                onChange={(val) => updatePolicy({ minVolumeRequired: val })}
+                            />
                         </div>
                         
                         <div className="flex flex-col gap-0.5">

@@ -69,6 +69,7 @@ class SolanaDealerStore {
                     };
                 }
                 this.isInitialized = true;
+                this.notify();
             } catch (error) {
                 console.error('[SolanaDealerStore] Failed to load settings:', error);
                 this.isInitialized = true;

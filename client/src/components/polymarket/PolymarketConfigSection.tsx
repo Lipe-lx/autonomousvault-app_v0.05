@@ -6,6 +6,7 @@ import {
     RefreshCw, Zap, DollarSign, Clock, Target, X, AlertCircle,
     Sparkles, Filter, TrendingUp, Plus, Minus
 } from 'lucide-react';
+import { FormattedNumberInput } from '../ui/FormattedNumberInput';
 import {
     PolymarketSettings,
     PolymarketPresetName,
@@ -182,7 +183,11 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Amount ($)</label>
                                 {localSettings.bankrollType === 'MANUAL' ? (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-bold font-mono text-white">{localSettings.manualBankroll?.toLocaleString() || 0}</span>
+                                        <FormattedNumberInput
+                                            className="text-sm font-bold font-mono text-white bg-transparent outline-none w-24"
+                                            value={localSettings.manualBankroll || 0}
+                                            onChange={(val) => handleLocalChange({ manualBankroll: val })}
+                                        />
                                         <div className="flex flex-col gap-0.5">
                                             <button onClick={() => handleLocalChange({ manualBankroll: (localSettings.manualBankroll || 0) + 100 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
                                             <button onClick={() => handleLocalChange({ manualBankroll: Math.max(0, (localSettings.manualBankroll || 0) - 100) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
@@ -197,7 +202,11 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Max Pos ($)</label>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-bold font-mono text-white">{localSettings.maxPositionSizeUSDC?.toLocaleString() || 0}</span>
+                                    <FormattedNumberInput
+                                        className="text-sm font-bold font-mono text-white bg-transparent outline-none w-24"
+                                        value={localSettings.maxPositionSizeUSDC || 0}
+                                        onChange={(val) => handleLocalChange({ maxPositionSizeUSDC: val })}
+                                    />
                                     <div className="flex flex-col gap-0.5">
                                         <button onClick={() => handleLocalChange({ maxPositionSizeUSDC: (localSettings.maxPositionSizeUSDC || 0) + 100 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
                                         <button onClick={() => handleLocalChange({ maxPositionSizeUSDC: Math.max(0, (localSettings.maxPositionSizeUSDC || 0) - 100) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
@@ -209,7 +218,11 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Max Open</label>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-bold font-mono text-white">{localSettings.maxOpenPositions}</span>
+                                    <FormattedNumberInput
+                                        className="text-sm font-bold font-mono text-white bg-transparent outline-none w-10"
+                                        value={localSettings.maxOpenPositions || 1}
+                                        onChange={(val) => handleLocalChange({ maxOpenPositions: val })}
+                                    />
                                     <div className="flex flex-col gap-0.5">
                                         <button onClick={() => handleLocalChange({ maxOpenPositions: (localSettings.maxOpenPositions || 1) + 1 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
                                         <button onClick={() => handleLocalChange({ maxOpenPositions: Math.max(1, (localSettings.maxOpenPositions || 1) - 1) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
@@ -229,7 +242,11 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Interval (seconds)</label>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-sm font-bold font-mono text-white">{localSettings.checkIntervalSeconds}</span>
+                                        <FormattedNumberInput
+                                            className="text-sm font-bold font-mono text-white bg-transparent outline-none w-10"
+                                            value={localSettings.checkIntervalSeconds || 60}
+                                            onChange={(val) => handleLocalChange({ checkIntervalSeconds: val })}
+                                        />
                                         <span className="text-[10px] text-[#747580]">s</span>
                                     </div>
                                     <div className="flex flex-col gap-0.5">
@@ -244,7 +261,11 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-baseline gap-1">
                                         <span className="text-[10px] text-[#747580]">$</span>
-                                        <span className="text-sm font-bold font-mono text-white">{localSettings.minVolumeThreshold?.toLocaleString() || 0}</span>
+                                        <FormattedNumberInput
+                                            className="text-sm font-bold font-mono text-white bg-transparent outline-none w-16"
+                                            value={localSettings.minVolumeThreshold || 0}
+                                            onChange={(val) => handleLocalChange({ minVolumeThreshold: val })}
+                                        />
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                         <button onClick={() => handleLocalChange({ minVolumeThreshold: (localSettings.minVolumeThreshold || 0) + 100 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
@@ -258,7 +279,11 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-baseline gap-1">
                                         <span className="text-[10px] text-[#747580]">$</span>
-                                        <span className="text-sm font-bold font-mono text-white">{localSettings.minLiquidityThreshold?.toLocaleString() || 0}</span>
+                                        <FormattedNumberInput
+                                            className="text-sm font-bold font-mono text-white bg-transparent outline-none w-16"
+                                            value={localSettings.minLiquidityThreshold || 0}
+                                            onChange={(val) => handleLocalChange({ minLiquidityThreshold: val })}
+                                        />
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                         <button onClick={() => handleLocalChange({ minLiquidityThreshold: (localSettings.minLiquidityThreshold || 0) + 100 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
@@ -312,7 +337,11 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Spread Edge</label>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-bold font-mono text-white">{(localSettings.minSpreadThreshold || 0.02).toFixed(2)}</span>
+                                    <FormattedNumberInput
+                                        className="text-sm font-bold font-mono text-white bg-transparent outline-none w-16"
+                                        value={localSettings.minSpreadThreshold != null ? localSettings.minSpreadThreshold : 0.02}
+                                        onChange={(val) => handleLocalChange({ minSpreadThreshold: val })}
+                                    />
                                     <div className="flex flex-col gap-0.5">
                                         <button onClick={() => handleLocalChange({ minSpreadThreshold: parseFloat(((localSettings.minSpreadThreshold || 0.02) + 0.01).toFixed(2)) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
                                         <button onClick={() => handleLocalChange({ minSpreadThreshold: Math.max(0, parseFloat(((localSettings.minSpreadThreshold || 0.02) - 0.01).toFixed(2))) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
@@ -323,7 +352,11 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Confidence</label>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-bold font-mono text-white">{(localSettings.confidenceThreshold || 0.6).toFixed(2)}</span>
+                                    <FormattedNumberInput
+                                        className="text-sm font-bold font-mono text-white bg-transparent outline-none w-16"
+                                        value={localSettings.confidenceThreshold != null ? localSettings.confidenceThreshold : 0.6}
+                                        onChange={(val) => handleLocalChange({ confidenceThreshold: val })}
+                                    />
                                     <div className="flex flex-col gap-0.5">
                                         <button onClick={() => handleLocalChange({ confidenceThreshold: Math.min(1, parseFloat(((localSettings.confidenceThreshold || 0.6) + 0.05).toFixed(2))) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
                                         <button onClick={() => handleLocalChange({ confidenceThreshold: Math.max(0, parseFloat(((localSettings.confidenceThreshold || 0.6) - 0.05).toFixed(2))) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
