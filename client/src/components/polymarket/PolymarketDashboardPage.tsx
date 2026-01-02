@@ -29,6 +29,27 @@ const extractMarketFromMessage = (message: string): string | null => {
     return match ? match[1].slice(0, 30) : null;
 };
 
+// Helper to format interval in user-friendly way
+const formatInterval = (seconds: number): string => {
+    if (seconds >= 604800 && seconds % 604800 === 0) {
+        const weeks = seconds / 604800;
+        return `${weeks} ${weeks === 1 ? 'Week' : 'Weeks'}`;
+    }
+    if (seconds >= 86400 && seconds % 86400 === 0) {
+        const days = seconds / 86400;
+        return `${days} ${days === 1 ? 'Day' : 'Days'}`;
+    }
+    if (seconds >= 3600 && seconds % 3600 === 0) {
+        const hours = seconds / 3600;
+        return `${hours} ${hours === 1 ? 'Hour' : 'Hours'}`;
+    }
+    if (seconds >= 60 && seconds % 60 === 0) {
+        const minutes = seconds / 60;
+        return `${minutes} ${minutes === 1 ? 'Minute' : 'Minutes'}`;
+    }
+    return `${seconds}s`;
+};
+
 export const PolymarketDashboardPage: React.FC<PolymarketDashboardPageProps> = ({
     status,
     onToggle,
@@ -270,7 +291,7 @@ export const PolymarketDashboardPage: React.FC<PolymarketDashboardPageProps> = (
                         <div className="glass-panel p-4 rounded flex items-center justify-between">
                             <div className="flex flex-col">
                                 <span className="text-[9px] text-[#747580] uppercase tracking-[0.1em] mb-1">Interval</span>
-                                <span className="text-white font-mono text-sm font-semibold">{status.settings.checkIntervalSeconds}s</span>
+                                <span className="text-white font-mono text-sm font-semibold">{formatInterval(status.settings.checkIntervalSeconds)}</span>
                             </div>
                             <Clock className="h-4 w-4 text-[#747580]" />
                         </div>

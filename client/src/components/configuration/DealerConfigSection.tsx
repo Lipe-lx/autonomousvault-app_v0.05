@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { DealerState, IndicatorSettings, PresetName, DealerSettings } from '../../state/dealerStore';
 import { FormattedNumberInput } from '../ui/FormattedNumberInput';
+import { TimeIntervalInput } from '../ui/TimeIntervalInput';
 
 import { hyperliquidService } from '../../services/hyperliquidService';
 import { IndicatorConfigPanel } from '../dealer/IndicatorConfigPanel';
@@ -328,22 +329,12 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                             </div>
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[10px] text-[#747580] font-medium mb-1.5 uppercase tracking-wider">
-                                    <Clock className="inline h-3 w-3 mr-1 opacity-50" />Interval (seconds)
+                                    <Clock className="inline h-3 w-3 mr-1 opacity-50" />Interval
                                 </label>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-baseline gap-1">
-                                        <FormattedNumberInput
-                                            className="text-sm font-bold font-mono text-white bg-transparent outline-none w-10"
-                                            value={localSettings.checkIntervalSeconds || 60}
-                                            onChange={(val) => handleLocalUpdate({ checkIntervalSeconds: val })}
-                                        />
-                                        <span className="text-[10px] text-[#747580]">s</span>
-                                    </div>
-                                    <div className="flex flex-col gap-0.5">
-                                        <button onClick={() => handleLocalUpdate({ checkIntervalSeconds: (localSettings.checkIntervalSeconds || 60) + 10 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
-                                        <button onClick={() => handleLocalUpdate({ checkIntervalSeconds: Math.max(60, (localSettings.checkIntervalSeconds || 60) - 10) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
-                                    </div>
-                                </div>
+                                <TimeIntervalInput
+                                    value={localSettings.checkIntervalSeconds || 60}
+                                    onChange={(val) => handleLocalUpdate({ checkIntervalSeconds: val })}
+                                />
                             </div>
                         </div>
                     </div>

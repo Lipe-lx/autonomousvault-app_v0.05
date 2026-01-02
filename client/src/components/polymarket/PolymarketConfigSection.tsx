@@ -7,6 +7,7 @@ import {
     Sparkles, Filter, TrendingUp, Plus, Minus
 } from 'lucide-react';
 import { FormattedNumberInput } from '../ui/FormattedNumberInput';
+import { TimeIntervalInput } from '../ui/TimeIntervalInput';
 import {
     PolymarketSettings,
     PolymarketPresetName,
@@ -239,21 +240,11 @@ export const PolymarketConfigSection: React.FC<PolymarketConfigSectionProps> = (
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
-                                <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Interval (seconds)</label>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-baseline gap-1">
-                                        <FormattedNumberInput
-                                            className="text-sm font-bold font-mono text-white bg-transparent outline-none w-10"
-                                            value={localSettings.checkIntervalSeconds || 60}
-                                            onChange={(val) => handleLocalChange({ checkIntervalSeconds: val })}
-                                        />
-                                        <span className="text-[10px] text-[#747580]">s</span>
-                                    </div>
-                                    <div className="flex flex-col gap-0.5">
-                                        <button onClick={() => handleLocalChange({ checkIntervalSeconds: (localSettings.checkIntervalSeconds || 60) + 10 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
-                                        <button onClick={() => handleLocalChange({ checkIntervalSeconds: Math.max(60, (localSettings.checkIntervalSeconds || 60) - 10) })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"><Minus size={8} /></button>
-                                    </div>
-                                </div>
+                                <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1.5">Interval</label>
+                                <TimeIntervalInput
+                                    value={localSettings.checkIntervalSeconds || 60}
+                                    onChange={(val) => handleLocalChange({ checkIntervalSeconds: val })}
+                                />
                             </div>
 
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
