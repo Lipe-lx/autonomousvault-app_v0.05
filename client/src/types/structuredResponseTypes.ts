@@ -129,6 +129,9 @@ export interface VolatilityItem extends BaseItem {
   priceChange24h?: number;
   priceChange7d?: number;
   tvl?: number;
+  apy?: number;
+  volume24h?: number;
+  volumeChange24h?: number;  // % change in volume (positive = up, negative = down)
   confidence: 'high' | 'medium' | 'low';
   dataPoints: number;
 }

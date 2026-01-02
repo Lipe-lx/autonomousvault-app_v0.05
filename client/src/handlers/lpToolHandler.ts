@@ -1050,6 +1050,10 @@ ${confidenceEmoji} Confidence: ${volatility.confidence.toUpperCase()} (${volatil
             
             let poolAddress = args.poolAddress;
             let poolName = '';
+            let poolProtocol: ProtocolId = 'raydium';
+            let poolApy: number | undefined;
+            let poolTvl: number | undefined;
+            let poolVolume24h: number | undefined;
             
             // If no poolAddress but tokenA/tokenB provided, find the best pool from Supabase
             if (!poolAddress && args.tokenA && args.tokenB) {
@@ -1066,6 +1070,8 @@ ${confidenceEmoji} Confidence: ${volatility.confidence.toUpperCase()} (${volatil
                 
                 poolAddress = pools[0].address;
                 poolName = pools[0].name;
+                poolProtocol = pools[0].protocol.includes('meteora') ? 'meteora' : 'raydium';
+                poolTvl = pools[0].tvl;
             }
             
             if (!poolAddress) {
@@ -1076,6 +1082,19 @@ ${confidenceEmoji} Confidence: ${volatility.confidence.toUpperCase()} (${volatil
                 };
             }
             
+            // Fetch pool details if not already available
+            if (poolApy === undefined || poolTvl === undefined) {
+                const pool = await meteoraService.getPool(poolAddress) || 
+                            await raydiumService.getPoolById(poolAddress);
+                if (pool) {
+                    poolName = poolName || pool.name;
+                    poolProtocol = pool.protocol.includes('meteora') ? 'meteora' : 'raydium';
+                    poolApy = pool.apy;
+                    poolTvl = pool.tvl;
+                    poolVolume24h = pool.volume?.['24h'];
+                }
+            }
+            
             // Get volatility
             const volatility = await volatilityService.calculateVolatility(poolAddress, args.days || 7);
             
@@ -1083,31 +1102,42 @@ ${confidenceEmoji} Confidence: ${volatility.confidence.toUpperCase()} (${volatil
                 return { type: 'error', title: 'Range Error', details: 'Could not get current price for pool. Make sure the pool has historical data in the database.' };
             }
 
+            // Get volume change
+            const volumeData = await volatilityService.getVolumeChange24h(poolAddress);
+
             // Get range suggestions
             const ranges = volatilityService.suggestOptimalRanges(volatility.currentPrice, volatility);
 
-            const strategyEmoji = {
-                'conservative': '🟢',
-                'moderate': '🟡',
-                'aggressive': '🔴'
-            };
-
             const poolDisplay = poolName || poolAddress.slice(0, 8) + '...';
-            let details = `📐 **Optimal Range Suggestions for ${poolDisplay}**\n`;
-            details += `Current Price: $${volatility.currentPrice.toFixed(4)}\n`;
-            details += `Daily Volatility: ${volatility.volatilityDaily.toFixed(2)}%\n\n`;
+            
+            // Build structured range suggestions
+            const rangeSuggestions: RangeSuggestion[] = ranges.map(range => ({
+                strategy: range.strategy as 'conservative' | 'moderate' | 'aggressive',
+                priceMin: range.priceMin,
+                priceMax: range.priceMax,
+                widthPercent: range.widthPercent,
+                sigmaMultiple: range.sigmaMultiple,
+                estimatedTimeInRange: range.estimatedTimeInRange
+            }));
 
-            ranges.forEach(range => {
-                const emoji = strategyEmoji[range.strategy];
-                details += `${emoji} **${range.strategy.toUpperCase()} (±${range.sigmaMultiple}σ)**\n`;
-                details += `   Range: $${range.priceMin.toFixed(4)} - $${range.priceMax.toFixed(4)}\n`;
-                details += `   Width: ${range.widthPercent.toFixed(1)}%\n`;
-                details += `   ${range.estimatedTimeInRange}\n\n`;
-            });
-
-            if (volatility.confidence === 'low') {
-                details += `\n⚠️ *Low confidence: ranges based on estimated volatility due to insufficient historical data.*`;
-            }
+            // Build volatility item for the card
+            const volatilityItem: VolatilityItem = {
+                type: 'volatility' as const,
+                poolName: poolName || undefined,
+                poolAddress: poolAddress,
+                protocol: poolProtocol,
+                currentPrice: volatility.currentPrice,
+                volatilityDaily: volatility.volatilityDaily,
+                volatilityAnnualized: volatility.volatilityAnnualized,
+                priceChange24h: volatility.priceChange24h,
+                priceChange7d: volatility.priceChange7d,
+                tvl: poolTvl,
+                apy: poolApy,
+                volume24h: volumeData?.current || poolVolume24h,
+                volumeChange24h: volumeData?.changePercent,
+                confidence: volatility.confidence as 'high' | 'medium' | 'low',
+                dataPoints: volatility.dataPoints
+            };
 
             // Generate rationale for the moderate strategy (most common choice)
             const moderateRange = ranges.find(r => r.strategy === 'moderate');
@@ -1126,12 +1156,25 @@ ${confidenceEmoji} Confidence: ${volatility.confidence.toUpperCase()} (${volatil
                 currentPrice: volatility.currentPrice
             });
 
+            // Create summary text for fallback
+            let details = `📐 **Optimal Range Suggestions for ${poolDisplay}**\n`;
+            details += `Current Price: $${volatility.currentPrice.toFixed(4)} | Daily Volatility: ${volatility.volatilityDaily.toFixed(2)}%`;
+
             return { 
                 type: 'success', 
                 semanticType: 'decision',
                 title: 'Range Suggestions', 
                 details,
-                rationale
+                rationale,
+                structuredData: {
+                    resultType: 'volatility',
+                    items: [volatilityItem],
+                    rangeSuggestions: rangeSuggestions,
+                    summary: volatility.confidence === 'low' 
+                        ? '⚠️ Low confidence: ranges based on estimated volatility due to limited historical data.'
+                        : undefined,
+                    title: `Range Suggestions for ${poolDisplay}`
+                }
             };
         } catch (err: any) {
             return { type: 'error', semanticType: 'analysis', title: 'Range Error', details: err.message };

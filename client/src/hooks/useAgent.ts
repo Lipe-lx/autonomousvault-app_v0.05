@@ -1519,7 +1519,18 @@ ${recentFills.map((f: any) => {
                                 toolResults.push({
                                     type: 'success',
                                     title: 'Leverage Updated',
-                                    details: `Set ${args.coin} leverage to ${args.leverage}x (${args.isCross ? 'Cross' : 'Isolated'})`
+                                    details: `Set ${args.coin} leverage to ${args.leverage}x (${args.isCross ? 'Cross' : 'Isolated'})`,
+                                    structuredData: {
+                                        resultType: 'transaction',
+                                        items: [{
+                                            type: 'transaction',
+                                            network: 'hyperliquid',
+                                            status: 'success',
+                                            title: 'Leverage Updated',
+                                            description: `${args.coin} leverage set to ${args.leverage}x ${args.isCross ? 'Cross' : 'Isolated'}`
+                                        }],
+                                        title: 'Leverage Updated'
+                                    }
                                 });
                             } catch (err: any) {
                                 toolResults.push({ type: 'error', title: 'Leverage Update Failed', details: err.message });
@@ -1550,7 +1561,19 @@ ${recentFills.map((f: any) => {
                                         toolResults.push({
                                             type: 'success',
                                             title: 'Position Closed',
-                                            details: `Closed ${args.size ? args.size : 'entire'} ${args.coin} position via ${args.orderType || 'market'} order`
+                                            details: `Closed ${args.size ? args.size : 'entire'} ${args.coin} position via ${args.orderType || 'market'} order`,
+                                            structuredData: {
+                                                resultType: 'transaction',
+                                                items: [{
+                                                    type: 'transaction',
+                                                    network: 'hyperliquid',
+                                                    status: 'success',
+                                                    title: 'Position Closed',
+                                                    description: `Closed ${args.size ? args.size + ' ' : ''}${args.coin} position via ${args.orderType || 'market'} order`,
+                                                    details: args.size ? { amount: args.size, token: args.coin } : undefined
+                                                }],
+                                                title: 'Position Closed'
+                                            }
                                         });
                                     } catch (innerErr: any) {
                                         // Handle "Insufficient margin" specifically for Isolated positions
@@ -1601,7 +1624,18 @@ ${recentFills.map((f: any) => {
                                                 toolResults.push({
                                                     type: 'success',
                                                     title: 'Position Closed (Recovered)',
-                                                    details: `Added ${marginToAdd.toFixed(2)} USDC margin to cover loss and closed ${args.coin} position successfully.`
+                                                    details: `Added ${marginToAdd.toFixed(2)} USDC margin to cover loss and closed ${args.coin} position successfully.`,
+                                                    structuredData: {
+                                                        resultType: 'transaction',
+                                                        items: [{
+                                                            type: 'transaction',
+                                                            network: 'hyperliquid',
+                                                            status: 'success',
+                                                            title: 'Position Closed (Recovered)',
+                                                            description: `Added ${marginToAdd.toFixed(2)} USDC margin and closed ${args.coin} position`
+                                                        }],
+                                                        title: 'Position Closed'
+                                                    }
                                                 });
                                             } else {
                                                 throw new Error("Position not found during margin recovery.");
@@ -1639,7 +1673,18 @@ ${recentFills.map((f: any) => {
                                 toolResults.push({
                                     type: 'success',
                                     title: 'Order Cancelled',
-                                    details: `Cancelled Order ${args.orderId}. Status: ${result.status}`
+                                    details: `Cancelled Order ${args.orderId}. Status: ${result.status}`,
+                                    structuredData: {
+                                        resultType: 'transaction',
+                                        items: [{
+                                            type: 'transaction',
+                                            network: 'hyperliquid',
+                                            status: 'success',
+                                            title: 'Order Cancelled',
+                                            description: `Order ${args.orderId} for ${args.coin} cancelled`
+                                        }],
+                                        title: 'Order Cancelled'
+                                    }
                                 });
                             } catch (err: any) {
                                 toolResults.push({ type: 'error', title: 'Cancel Failed', details: err.message });
@@ -1686,7 +1731,19 @@ ${recentFills.map((f: any) => {
                                 toolResults.push({
                                     type: 'success',
                                     title: 'Hyperliquid Withdrawal Initiated',
-                                    details: `Withdrawing ${args.amount} USDC to ${vault.hlOwnerPublicKey.slice(0, 6)}...${vault.hlOwnerPublicKey.slice(-4)}. Fee: $1 USDC. ETA: ~5 minutes.`
+                                    details: `Withdrawing ${args.amount} USDC to ${vault.hlOwnerPublicKey.slice(0, 6)}...${vault.hlOwnerPublicKey.slice(-4)}. Fee: $1 USDC. ETA: ~5 minutes.`,
+                                    structuredData: {
+                                        resultType: 'transaction',
+                                        items: [{
+                                            type: 'transaction',
+                                            network: 'hyperliquid',
+                                            status: 'pending',
+                                            title: 'Withdrawal Initiated',
+                                            description: `${args.amount} USDC to ${vault.hlOwnerPublicKey.slice(0, 6)}...${vault.hlOwnerPublicKey.slice(-4)}`,
+                                            details: { amount: args.amount, token: 'USDC', fee: 1 }
+                                        }],
+                                        title: 'Withdrawal Pending'
+                                    }
                                 });
                             } catch (err: any) {
                                 // Check for specific error about deposit requirement

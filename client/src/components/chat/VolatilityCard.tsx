@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, TrendingDown, Activity, AlertTriangle } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Activity, AlertTriangle, ArrowRight } from 'lucide-react';
 import { VolatilityItem, RangeSuggestion, PROTOCOL_INFO } from '../../types/structuredResponseTypes';
 import { formatPercent, formatCompactNumber } from '../../utils/formatUtils';
 import { ProtocolBadge } from './ProtocolBadge';
@@ -11,6 +11,7 @@ interface VolatilityCardProps {
   rangeSuggestions?: RangeSuggestion[];
   index?: number;
   className?: string;
+  onSendMessage?: (message: string) => void;
 }
 
 const CONFIDENCE_CONFIG = {
@@ -29,7 +30,8 @@ export const VolatilityCard: React.FC<VolatilityCardProps> = ({
   data,
   rangeSuggestions,
   index = 0,
-  className
+  className,
+  onSendMessage
 }) => {
   const confidence = CONFIDENCE_CONFIG[data.confidence];
   const priceUp24h = data.priceChange24h !== undefined && data.priceChange24h >= 0;
@@ -68,66 +70,99 @@ export const VolatilityCard: React.FC<VolatilityCardProps> = ({
         </div>
       </div>
 
-      {/* Volatility Metrics */}
+      {/* Volatility & Volume Metrics - 2x2 Grid */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-[#0f1015] rounded-lg p-3">
-          <div className="text-[9px] text-[#747580] uppercase tracking-wider mb-1">Daily Vol</div>
+        {/* Row 1: Volume 24h */}
+        <div className="bg-[#0f1015] rounded-lg p-4">
+          <div className="text-[9px] text-[#747580] uppercase tracking-wider mb-1">Volume 24h</div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-bold text-[#f59e0b]">
+              {formatCompactNumber(data.volume24h || 0)}
+            </span>
+            {data.volumeChange24h !== undefined && (
+              <div className={cn(
+                "text-xs flex items-center gap-0.5",
+                data.volumeChange24h >= 0 ? "text-[#34d399]" : "text-[#ef4444]"
+              )}>
+                {data.volumeChange24h >= 0 ? (
+                  <TrendingUp size={12} />
+                ) : (
+                  <TrendingDown size={12} />
+                )}
+                {formatPercent(Math.abs(data.volumeChange24h))}
+              </div>
+            )}
+          </div>
+        </div>
+        {/* Row 1: APY */}
+        <div className="bg-[#0f1015] rounded-lg p-4">
+          <div className="text-[9px] text-[#747580] uppercase tracking-wider mb-1">APY</div>
+          <div className={cn(
+            "text-lg font-bold",
+            (data.apy || 0) > 0 ? "text-[#34d399]" : "text-[#747580]"
+          )}>
+            {formatPercent(data.apy || 0)}
+          </div>
+        </div>
+        {/* Row 2: Daily Volatility */}
+        <div className="bg-[#0f1015] rounded-lg p-4">
+          <div className="text-[9px] text-[#747580] uppercase tracking-wider mb-1">Daily Volatility</div>
           <div className="text-lg font-bold text-[#60a5fa]">
             {formatPercent(data.volatilityDaily)}
           </div>
         </div>
-        <div className="bg-[#0f1015] rounded-lg p-3">
-          <div className="text-[9px] text-[#747580] uppercase tracking-wider mb-1">Annual Vol</div>
+        {/* Row 2: Monthly Volatility */}
+        <div className="bg-[#0f1015] rounded-lg p-4">
+          <div className="text-[9px] text-[#747580] uppercase tracking-wider mb-1">Monthly Volatility</div>
           <div className="text-lg font-bold text-[#8b5cf6]">
-            {formatPercent(data.volatilityAnnualized)}
+            {formatPercent(data.volatilityAnnualized / Math.sqrt(12))}
           </div>
         </div>
       </div>
 
-      {/* Price Changes */}
-      {(data.priceChange24h !== undefined || data.priceChange7d !== undefined) && (
-        <div className="flex gap-4 mb-4 text-xs">
-          {data.priceChange24h !== undefined && (
-            <div className="flex items-center gap-1">
-              {priceUp24h ? (
-                <TrendingUp size={12} className="text-[#34d399]" />
-              ) : (
-                <TrendingDown size={12} className="text-[#ef4444]" />
-              )}
-              <span className={priceUp24h ? 'text-[#34d399]' : 'text-[#ef4444]'}>
-                {formatPercent(data.priceChange24h, { showSign: true })}
-              </span>
-              <span className="text-[#747580]">24h</span>
-            </div>
-          )}
-          {data.priceChange7d !== undefined && (
-            <div className="flex items-center gap-1">
-              {priceUp7d ? (
-                <TrendingUp size={12} className="text-[#34d399]" />
-              ) : (
-                <TrendingDown size={12} className="text-[#ef4444]" />
-              )}
-              <span className={priceUp7d ? 'text-[#34d399]' : 'text-[#ef4444]'}>
-                {formatPercent(data.priceChange7d, { showSign: true })}
-              </span>
-              <span className="text-[#747580]">7d</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TVL if available */}
-      {data.tvl !== undefined && (
-        <div className="text-xs text-[#747580] mb-3">
-          TVL: <span className="text-white font-medium">{formatCompactNumber(data.tvl)}</span>
-        </div>
-      )}
+      {/* TVL + Price Changes - Single Line */}
+      <div className="flex items-center gap-4 text-xs mb-4">
+        {data.tvl !== undefined && (
+          <div className="text-[#747580]">
+            TVL: <span className="text-white font-medium">{formatCompactNumber(data.tvl)}</span>
+          </div>
+        )}
+        {data.priceChange24h !== undefined && (
+          <div className="flex items-center gap-1">
+            {priceUp24h ? (
+              <TrendingUp size={12} className="text-[#34d399]" />
+            ) : (
+              <TrendingDown size={12} className="text-[#ef4444]" />
+            )}
+            <span className={priceUp24h ? 'text-[#34d399]' : 'text-[#ef4444]'}>
+              {formatPercent(data.priceChange24h, { showSign: true })}
+            </span>
+            <span className="text-[#747580]">24h</span>
+          </div>
+        )}
+        {data.priceChange7d !== undefined && (
+          <div className="flex items-center gap-1">
+            {priceUp7d ? (
+              <TrendingUp size={12} className="text-[#34d399]" />
+            ) : (
+              <TrendingDown size={12} className="text-[#ef4444]" />
+            )}
+            <span className={priceUp7d ? 'text-[#34d399]' : 'text-[#ef4444]'}>
+              {formatPercent(data.priceChange7d, { showSign: true })}
+            </span>
+            <span className="text-[#747580]">7d</span>
+          </div>
+        )}
+      </div>
 
       {/* Range Suggestions */}
       {rangeSuggestions && rangeSuggestions.length > 0 && (
         <div className="mt-4 pt-4 border-t border-[#232328]">
-          <div className="text-[10px] text-[#747580] uppercase tracking-wider mb-3">
-            Suggested Ranges
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#E7FE55]" />
+            <span className="text-[10px] text-[#747580] uppercase tracking-wider font-medium">
+              Suggested Ranges
+            </span>
           </div>
           <div className="space-y-2">
             {rangeSuggestions.map((range, idx) => {
@@ -135,20 +170,77 @@ export const VolatilityCard: React.FC<VolatilityCardProps> = ({
               return (
                 <div 
                   key={idx}
-                  className="p-2 rounded-lg text-xs"
-                  style={{ backgroundColor: strategy.bgColor }}
+                  className="group/range p-3 rounded-lg border transition-all duration-300 hover:scale-[1.01]"
+                  style={{ 
+                    backgroundColor: strategy.bgColor,
+                    borderColor: `${strategy.color}20`
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold capitalize" style={{ color: strategy.color }}>
-                      {strategy.emoji} {range.strategy} (±{range.sigmaMultiple}σ)
+                  {/* Strategy Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span 
+                        className="text-sm font-bold uppercase tracking-wide"
+                        style={{ color: strategy.color }}
+                      >
+                        {strategy.emoji} {range.strategy}
+                      </span>
+                      <span 
+                        className="text-[9px] px-1.5 py-0.5 rounded-full font-mono"
+                        style={{ 
+                          backgroundColor: `${strategy.color}20`,
+                          color: strategy.color 
+                        }}
+                      >
+                        ±{range.sigmaMultiple}σ
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[#747580] font-medium">
+                      {range.widthPercent.toFixed(1)}% width
                     </span>
-                    <span className="text-[#747580]">{range.widthPercent.toFixed(1)}% width</span>
                   </div>
-                  <div className="font-mono text-[11px] text-white">
-                    ${range.priceMin.toFixed(4)} - ${range.priceMax.toFixed(4)}
+                  
+                  {/* Price Range */}
+                  <div className="bg-[#0f1015]/60 rounded-md px-3 py-2 mb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[9px] text-[#747580] uppercase">Min</div>
+                      <div className="text-[9px] text-[#747580] uppercase">Max</div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-sm text-white font-semibold">
+                        ${range.priceMin.toFixed(4)}
+                      </span>
+                      <div className="flex-1 mx-3 h-px bg-gradient-to-r from-transparent via-[#747580]/30 to-transparent" />
+                      <span className="font-mono text-sm text-white font-semibold">
+                        ${range.priceMax.toFixed(4)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-[9px] text-[#747580] mt-1">
-                    {range.estimatedTimeInRange}
+                  
+                  {/* Time in Range + Action Button */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[10px] text-[#a0a0a8]">
+                      <Activity size={10} className="text-[#747580]" />
+                      <span>{range.estimatedTimeInRange}</span>
+                    </div>
+                    {onSendMessage && (
+                      <button
+                        onClick={() => {
+                          const poolName = data.poolName || data.poolAddress.slice(0, 8);
+                          const message = `Adicionar liquidez na pool ${poolName} com range ${range.strategy}: min $${range.priceMin.toFixed(4)}, max $${range.priceMax.toFixed(4)}`;
+                          onSendMessage(message);
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-[9px] font-medium transition-all duration-200 hover:scale-105"
+                        style={{
+                          backgroundColor: `${strategy.color}20`,
+                          color: strategy.color,
+                          border: `1px solid ${strategy.color}40`
+                        }}
+                      >
+                        <span>Use Range</span>
+                        <ArrowRight size={10} />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

@@ -198,7 +198,7 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
                                                         <div key={idx}>
                                                             {/* Render structured data as rich cards if available */}
                                                             {result.structuredData ? (
-                                                                <StructuredResultRenderer data={result.structuredData} />
+                                                                <StructuredResultRenderer data={result.structuredData} onSendMessage={handleSendMessage} />
                                                             ) : (
                                                                 /* Fallback to text-based rendering */
                                                                 <div className={cn(

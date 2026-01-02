@@ -16,13 +16,14 @@ import { CardGrid } from './CardGrid';
 
 interface StructuredResultRendererProps {
   data: StructuredResult;
+  onSendMessage?: (message: string) => void;
 }
 
 /**
  * Main renderer component that switches between different card types
  * based on the structured result type
  */
-export const StructuredResultRenderer: React.FC<StructuredResultRendererProps> = ({ data }) => {
+export const StructuredResultRenderer: React.FC<StructuredResultRendererProps> = ({ data, onSendMessage }) => {
   // Summary header if provided
   const renderSummary = () => {
     if (!data.summary && !data.title) return null;
@@ -177,6 +178,7 @@ export const StructuredResultRenderer: React.FC<StructuredResultRendererProps> =
           <VolatilityCard 
             data={volatilityItems[0]} 
             rangeSuggestions={data.rangeSuggestions}
+            onSendMessage={onSendMessage}
           />
         </div>
       );

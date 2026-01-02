@@ -201,6 +201,90 @@ class VolatilityService {
     }
 
     /**
+     * Calculate 24h volume change percentage
+     * Compares current 24h volume with volume from ~24h ago
+     */
+    async getVolumeChange24h(
+        poolAddress: string
+    ): Promise<{ current: number; previous: number; changePercent: number } | null> {
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+            console.warn('[VolatilityService] Supabase client not available');
+            return null;
+        }
+
+        try {
+            // Get pool ID
+            const { data: pool, error: poolError } = await supabase
+                .from('liquidity_pools')
+                .select('id')
+                .eq('address', poolAddress)
+                .single();
+
+            if (poolError || !pool) {
+                console.warn('[VolatilityService] Pool not found for volume:', poolAddress);
+                return null;
+            }
+
+            // Get the most recent snapshot
+            const { data: currentSnapshot, error: currentError } = await supabase
+                .from('liquidity_pool_snapshots')
+                .select('volume_24h, timestamp')
+                .eq('pool_id', pool.id)
+                .order('timestamp', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (currentError || !currentSnapshot) {
+                return null;
+            }
+
+            // Get snapshot from ~24 hours ago
+            const past24h = new Date();
+            past24h.setHours(past24h.getHours() - 24);
+
+            const { data: pastSnapshot, error: pastError } = await supabase
+                .from('liquidity_pool_snapshots')
+                .select('volume_24h, timestamp')
+                .eq('pool_id', pool.id)
+                .lte('timestamp', past24h.toISOString())
+                .order('timestamp', { ascending: false })
+                .limit(1)
+                .single();
+
+            const currentVolume = parseFloat(currentSnapshot.volume_24h) || 0;
+            
+            // If no past snapshot, return current volume only
+            if (pastError || !pastSnapshot) {
+                return {
+                    current: currentVolume,
+                    previous: 0,
+                    changePercent: 0
+                };
+            }
+
+            const previousVolume = parseFloat(pastSnapshot.volume_24h) || 0;
+
+            // Calculate percentage change
+            let changePercent = 0;
+            if (previousVolume > 0) {
+                changePercent = ((currentVolume - previousVolume) / previousVolume) * 100;
+            } else if (currentVolume > 0) {
+                changePercent = 100; // From 0 to something = 100% increase
+            }
+
+            return {
+                current: currentVolume,
+                previous: previousVolume,
+                changePercent: Math.round(changePercent * 100) / 100
+            };
+        } catch (error) {
+            console.error('[VolatilityService] Error calculating volume change:', error);
+            return null;
+        }
+    }
+
+    /**
      * Get price history from Supabase
      */
     async getPriceHistory(
