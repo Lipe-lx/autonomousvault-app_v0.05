@@ -458,10 +458,37 @@ export class AIService {
       }
     };
 
+    const getHLDealerThinkingTool: FunctionDeclaration = {
+      name: 'getHLDealerThinking',
+      description: `Get the Hyperliquid Dealer's AI reasoning and decisions from recent analysis cycles.
+      
+      Returns the complete AI thinking process including:
+      - Market analysis summary from the AI
+      - Individual asset decisions with confidence levels
+      - Assets analyzed in the cycle
+      
+      Use this when user asks about Hyperliquid Dealer:
+      - "O que o dealer pensou?" / "What did the dealer think?"
+      - "Qual foi o raciocínio?" / "What was the reasoning?"
+      - "Por que essa decisão?" / "Why this decision?"
+      - "Mostra a análise" / "Show the analysis"
+      
+      Can access up to 3 previous cycles (0=latest, 1=previous, 2=oldest).`,
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          cycleIndex: {
+            type: Type.NUMBER,
+            description: 'Cycle index: 0=latest (default), 1=previous, 2=oldest. Max 3 cycles available.'
+          }
+        }
+      }
+    };
+
     // LP Tools for Meteora and Raydium pools
     const lpTools = getLPToolDeclarations();
 
-    return [{ functionDeclarations: [getBalanceTool, swapTool, withdrawTool, transferTokenTool, scheduleTool, getMarketPriceTool, getOHLCVTool, getIndicatorTool, getTradingViewSummaryTool, getHLBalanceTool, getHLPositionsTool, getHLMarketDataTool, createHLOrderTool, cancelHLOrderTool, updateHLLeverageTool, closeHLPositionTool, withdrawFromHLTool, getDealerTradeHistoryTool, ...lpTools] }];
+    return [{ functionDeclarations: [getBalanceTool, swapTool, withdrawTool, transferTokenTool, scheduleTool, getMarketPriceTool, getOHLCVTool, getIndicatorTool, getTradingViewSummaryTool, getHLBalanceTool, getHLPositionsTool, getHLMarketDataTool, createHLOrderTool, cancelHLOrderTool, updateHLLeverageTool, closeHLPositionTool, withdrawFromHLTool, getDealerTradeHistoryTool, getHLDealerThinkingTool, ...lpTools] }];
   }
 
   async sendMessage(

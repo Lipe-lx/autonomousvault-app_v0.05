@@ -10,6 +10,7 @@ import { DealerOpenOrders } from './DealerOpenOrders';
 import { DealerState, DealerLog } from '../../state/dealerStore';
 import { useCycleSummary } from '../../hooks/useCycleSummary';
 import { hyperliquidService } from '../../services/hyperliquidService';
+import { profitHistoryService, ProfitSnapshot } from '../../services/profitHistoryService';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
     BarChart, Bar, Cell
@@ -72,7 +73,7 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
     setActiveTab
 }) => {
     const [fills, setFills] = useState<TradeFill[]>([]);
-    const [pnlHistory, setPnlHistory] = useState<any[]>([]);
+    const [pnlHistory, setPnlHistory] = useState<ProfitSnapshot[]>([]);
     const [fillsPage, setFillsPage] = useState(0);
     const [stats, setStats] = useState({
         totalPnl: 0,
@@ -118,6 +119,25 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
     // AI Summary toggle state
     const [showSummary, setShowSummary] = useState(false);
     const { summary: cycleSummary, isGenerating: isSummaryGenerating, cycleCount, lastUpdate: summaryLastUpdate, hasSummary } = useCycleSummary('hyperliquid');
+
+    // Compute profit from snapshot history (last - first snapshot value)
+    const snapshotProfit = useMemo(() => {
+        if (!pnlHistory || pnlHistory.length < 2) return 0;
+        const first = pnlHistory[0];
+        const last = pnlHistory[pnlHistory.length - 1];
+        // Validate that both values are valid numbers
+        if (typeof first?.portfolioValue !== 'number' || typeof last?.portfolioValue !== 'number') {
+            return 0;
+        }
+        const profit = last.portfolioValue - first.portfolioValue;
+        return isNaN(profit) ? 0 : profit;
+    }, [pnlHistory]);
+
+    // Check if we have valid chart data
+    const hasValidChartData = useMemo(() => {
+        return pnlHistory && pnlHistory.length >= 2 && 
+            pnlHistory.every(s => typeof s?.timestamp === 'number' && typeof s?.portfolioValue === 'number');
+    }, [pnlHistory]);
 
     // Reasoning navigation state
     const [reasoningIndex, setReasoningIndex] = useState(0);
@@ -263,7 +283,23 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
         return () => clearInterval(interval);
     }, [vaultAddress, baselineTimestamp, processPnlData]);
 
-    // Recalculate stats when baseline changes
+    // Load REAL profit history from profitHistoryService
+    useEffect(() => {
+        const loadProfitHistory = async () => {
+            try {
+                const history = await profitHistoryService.getHistory(baselineTimestamp || undefined);
+                setPnlHistory(history);
+            } catch (e) {
+                console.warn('[Dashboard] Failed to load profit history:', e);
+            }
+        };
+        loadProfitHistory();
+        // Refresh every 30s to pick up new snapshots
+        const interval = setInterval(loadProfitHistory, 30000);
+        return () => clearInterval(interval);
+    }, [baselineTimestamp]);
+
+    // Recalculate stats when baseline changes (for fills-based stats)
     useEffect(() => {
         if (fills.length > 0) {
             processPnlData(fills, baselineTimestamp);
@@ -339,14 +375,14 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
                                 <div className="text-[10px] text-[#747580] uppercase tracking-[0.1em]">Total Profit</div>
                                 <button
                                     onClick={handleResetMetrics}
-                                    className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-[#747580] hover:text-[#E7FE55] hover:bg-[#1a1b21]"
+                                    className="p-1 rounded text-[#747580] hover:text-[#E7FE55] hover:bg-[#1a1b21] transition-colors"
                                     title="Reset metrics from now"
                                 >
                                     <RotateCcw size={12} />
                                 </button>
                             </div>
-                            <div className={`text-xl font-semibold font-mono tracking-tight ${stats.totalPnl >= 0 ? 'text-[#34d399]' : 'text-red-400'}`}>
-                                {stats.totalPnl >= 0 ? '+' : ''}{stats.totalPnl.toFixed(2)} USD
+                            <div className={`text-xl font-semibold font-mono tracking-tight ${snapshotProfit >= 0 ? 'text-[#34d399]' : 'text-red-400'}`}>
+                                {snapshotProfit >= 0 ? '+' : ''}{snapshotProfit.toFixed(2)} USD
                             </div>
                             {baselineTimestamp && (
                                 <div className="text-[8px] text-[#3a3b42] mt-1" title={`Measuring since ${new Date(baselineTimestamp).toLocaleString()}`}>
@@ -409,9 +445,14 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
                             <span className="text-sm font-semibold text-white">Performance Curve</span>
                         </div>
                         <div className="flex-1 w-full">
-                            {pnlHistory.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
-                                    <AreaChart data={pnlHistory}>
+                            {hasValidChartData ? (
+                            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+                                    <AreaChart data={pnlHistory.map((s) => ({
+                                        time: s.timestamp,
+                                        date: new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                        pnl: s.portfolioValue - pnlHistory[0].portfolioValue,
+                                        portfolioValue: s.portfolioValue
+                                    }))}>
                                         <defs>
                                             <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#E7FE55" stopOpacity={0.2} />
@@ -420,11 +461,14 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#232328" vertical={false} />
                                         <XAxis dataKey="date" stroke="#747580" fontSize={10} tickLine={false} axisLine={false} />
-                                        <YAxis stroke="#747580" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
+                                        <YAxis stroke="#747580" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${val >= 0 ? '+' : ''}$${val.toFixed(0)}`} />
                                         <RechartsTooltip
                                             contentStyle={{ backgroundColor: '#14151a', borderColor: '#232328', borderRadius: '4px' }}
                                             itemStyle={{ color: '#E7FE55' }}
-                                            formatter={(value: number) => [`$${value.toFixed(2)}`, 'Net PnL']}
+                                            formatter={(value: number, name: string) => [
+                                                name === 'pnl' ? `${value >= 0 ? '+' : ''}$${value.toFixed(2)}` : `$${value.toFixed(2)}`,
+                                                name === 'pnl' ? 'Profit/Loss' : 'Portfolio Value'
+                                            ]}
                                         />
                                         <Area type="monotone" dataKey="pnl" stroke="#E7FE55" strokeWidth={1.5} fillOpacity={1} fill="url(#colorPnl)" />
                                     </AreaChart>
@@ -432,7 +476,8 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center text-[#747580]">
                                     <BarChart2 className="h-8 w-8 mb-2 opacity-40" />
-                                    <span className="text-[11px]">No performance data yet</span>
+                                    <span className="text-[11px]">Collecting performance data...</span>
+                                    <span className="text-[9px] opacity-60 mt-1">Data appears when dealer is active</span>
                                 </div>
                             )}
                         </div>

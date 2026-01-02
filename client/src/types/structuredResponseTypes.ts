@@ -19,7 +19,8 @@ export type CardType =
   | 'analysis'    // Market analysis
   | 'volatility'  // Volatility data
   | 'list'        // Generic list of items
-  | 'error';      // Error state
+  | 'error'       // Error state
+  | 'hl-thinking'; // Hyperliquid Dealer AI thinking
 
 // Action that can be performed from a card
 export interface CardAction {
@@ -146,13 +147,28 @@ export interface RangeSuggestion {
   estimatedTimeInRange: string;
 }
 
+// Hyperliquid Dealer AI Thinking item
+export interface HLThinkingItem extends BaseItem {
+  type: 'hl-thinking';
+  cycleTimestamp: number;
+  cycleNumber?: number;
+  aiSummary?: string;
+  decisions: {
+    asset: string;
+    action: 'BUY' | 'SELL' | 'HOLD' | 'CLOSE';
+    confidence: number;
+  }[];
+  assetsAnalyzed: string[];
+}
+
 // Union of all structured items
 export type StructuredItem = 
   | PoolItem 
   | BalanceItem 
   | TransactionItem 
   | PositionItem 
-  | VolatilityItem;
+  | VolatilityItem
+  | HLThinkingItem;
 
 // Main structured result container
 export interface StructuredResult {

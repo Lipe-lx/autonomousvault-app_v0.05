@@ -245,6 +245,21 @@ export class GeminiProvider implements IAIProvider {
             }
         };
 
+        const getHLDealerThinkingTool: FunctionDeclaration = {
+            name: 'getHLDealerThinking',
+            description: `Get the Hyperliquid Dealer's AI reasoning from recent analysis cycles.
+            Use when user asks about dealer thinking, reasoning, or analysis.`,
+            parameters: {
+                type: Type.OBJECT,
+                properties: {
+                    cycleIndex: { 
+                        type: Type.NUMBER, 
+                        description: 'Cycle index: 0=latest, 1=previous, 2=oldest (max 3 cycles)' 
+                    }
+                }
+            }
+        };
+
         const scheduleTaskTool: FunctionDeclaration = {
             name: 'scheduleTask',
             description: 'Schedule a task to execute at a specific time or when a market condition is met.',
@@ -281,7 +296,8 @@ export class GeminiProvider implements IAIProvider {
                 getMarketPriceTool, getOHLCVTool, getIndicatorTool, getTradingViewSummaryTool,
                 getHLBalanceTool, getHLPositionsTool, getHLMarketDataTool,
                 createHLOrderTool, cancelHLOrderTool, updateHLLeverageTool,
-                closeHLPositionTool, withdrawFromHLTool, getDealerTradeHistoryTool
+                closeHLPositionTool, withdrawFromHLTool, getDealerTradeHistoryTool,
+                getHLDealerThinkingTool
             ]
         }];
     }

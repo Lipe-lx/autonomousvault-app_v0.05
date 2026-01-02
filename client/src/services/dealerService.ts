@@ -144,12 +144,28 @@ export class DealerService {
             // Validate against local budget/settings if needed (e.g. check if we are overexposed)
             this.vaultContext.balance = portfolioValue; // Update context balance approximation
 
+            // Calculate total unrealized PnL for snapshot
+            const totalUnrealized = dealerPositions.reduce((acc, p) => acc + p.unrealizedPnl, 0);
+
             // Update Store
             dealerStore.updatePortfolioState(
                 dealerPositions,
                 portfolioValue,
                 totalExposure
             );
+
+            // Record snapshot for Performance Curve (only when dealer is on)
+            const state = dealerStore.getSnapshot();
+            if (state.isOn) {
+                const { profitHistoryService } = await import('./profitHistoryService');
+                profitHistoryService.recordSnapshot({
+                    timestamp: Date.now(),
+                    portfolioValue,
+                    unrealizedPnl: totalUnrealized,
+                    positionCount: currentPositions.length,
+                    trigger: 'sync'
+                });
+            }
 
         } catch (syncErr) {
             console.warn('[DealerService] syncPortfolio failed:', syncErr);

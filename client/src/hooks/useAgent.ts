@@ -17,8 +17,10 @@ import {
     BalanceItem, 
     TransactionItem,
     PositionItem,
-    NetworkId
+    NetworkId,
+    HLThinkingItem
 } from '../types/structuredResponseTypes';
+import { cycleSummaryStore } from '../state/cycleSummaryStore';
 
 import { StorageService } from '../services/storageService';
 
@@ -248,11 +250,14 @@ ${recentFills.map((f: any) => {
           
           **RESPONSE GUIDELINES (CRITICAL):**
           
-          1. **STATUS QUESTIONS** (e.g., "What is the dealer doing?", "O que o dealer está fazendo?"):
-             - Show: Status (active/inactive), current task, current signal
-             - Keep response SHORT and concise (2-3 sentences max)
-             - DO NOT list all settings or metrics unless asked
-          
+          1. **STATUS QUESTIONS** (e.g., "What is the dealer doing?", "O que o dealer está fazendo?", "Resumo do dealer"):
+             - Call BOTH tools: 'getHLBalance' (positions) AND 'getHLDealerThinking' (AI reasoning)
+             - Show a COMPLETE summary: Status + Open Positions + Last AI Thinking + Recent Activity
+             - Format response in organized sections:
+               • **Status**: Active/Inactive, current task
+               • **Positions**: Open trades with entry price, size, PnL
+               • **Last Analysis**: AI reasoning from latest cycle
+             - If no positions, say "No open positions - monitoring markets"
           2. **PERFORMANCE/RESULTS QUESTIONS** (e.g., "How much profit?", "Quanto lucrou?", "What's my win rate?"):
              - Use the PERFORMANCE METRICS data above
              - Answer specifically what was asked
@@ -1882,6 +1887,60 @@ ${recentFills.map((f: any) => {
                             }
                         } catch (err: any) {
                             toolResults.push({ type: 'error', title: 'Dealer History Error', details: err.message });
+                        }
+                    } else if (name === 'getHLDealerThinking') {
+                        // Get Hyperliquid Dealer AI thinking/reasoning from recent cycles
+                        try {
+                            setAiStatus('🧠 Fetching Hyperliquid Dealer thinking...');
+                            
+                            const summaryState = cycleSummaryStore.getSnapshot('hyperliquid');
+                            const cycleIndex = Math.min(args.cycleIndex || 0, 2); // Max 3 cycles
+                            const targetCycle = summaryState.recentCycles[cycleIndex];
+                            
+                            if (!targetCycle && !summaryState.aiSummary) {
+                                toolResults.push({
+                                    type: 'success',
+                                    title: 'Hyperliquid Dealer Thinking',
+                                    details: 'O Hyperliquid Dealer ainda não executou nenhum ciclo de análise. Ative o Dealer e aguarde o primeiro ciclo.'
+                                });
+                            } else {
+                                // Build HLThinkingItem for structured display
+                                const thinkingItem: HLThinkingItem = {
+                                    type: 'hl-thinking',
+                                    cycleTimestamp: targetCycle?.timestamp || Date.now(),
+                                    cycleNumber: targetCycle?.cycleNumber,
+                                    aiSummary: summaryState.aiSummary || undefined,
+                                    decisions: (targetCycle?.decisions || []).map(d => ({
+                                        asset: d.asset,
+                                        action: d.action as 'BUY' | 'SELL' | 'HOLD' | 'CLOSE',
+                                        confidence: d.confidence
+                                    })),
+                                    assetsAnalyzed: targetCycle?.assetsAnalyzed || []
+                                };
+                                
+                                // Get REASONING logs for additional context
+                                const reasoningLogs = dealerStore.getSnapshot().logs
+                                    .filter(log => log.type === 'REASONING' || log.type === 'SIGNAL')
+                                    .slice(0, 3);
+                                
+                                let details = `Cycle #${targetCycle?.cycleNumber || 'Latest'}`;
+                                if (reasoningLogs.length > 0) {
+                                    details += '\n\nRecent signals:\n' + reasoningLogs.map(l => `• ${l.message}`).join('\n');
+                                }
+                                
+                                toolResults.push({
+                                    type: 'success',
+                                    title: 'Hyperliquid Dealer Thinking',
+                                    details,
+                                    structuredData: {
+                                        resultType: 'hl-thinking',
+                                        items: [thinkingItem],
+                                        title: 'Hyperliquid Dealer Analysis'
+                                    }
+                                });
+                            }
+                        } catch (err: any) {
+                            toolResults.push({ type: 'error', title: 'HL Dealer Thinking Error', details: err.message });
                         }
                     }
                     // LP TOOL HANDLERS (Meteora, Raydium, Liquidity Pools)

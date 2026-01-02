@@ -5,13 +5,15 @@ import {
   BalanceItem, 
   TransactionItem, 
   VolatilityItem,
-  PositionItem
+  PositionItem,
+  HLThinkingItem
 } from '../../types/structuredResponseTypes';
 import { PoolCard } from './PoolCard';
 import { BalanceCard, BalanceGrid } from './BalanceCard';
 import { TransactionCard } from './TransactionCard';
 import { VolatilityCard } from './VolatilityCard';
 import { PositionCard } from './PositionCard';
+import { HLThinkingCard } from './HLThinkingCard';
 import { CardGrid } from './CardGrid';
 
 interface StructuredResultRendererProps {
@@ -238,6 +240,24 @@ export const StructuredResultRenderer: React.FC<StructuredResultRendererProps> =
                   </div>
                 )}
               </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case 'hl-thinking': {
+      const thinkingItems = data.items.filter(
+        (item): item is HLThinkingItem => item.type === 'hl-thinking'
+      );
+      if (thinkingItems.length === 0) return null;
+      
+      return (
+        <div>
+          {renderSummary()}
+          <div className="space-y-3">
+            {thinkingItems.map((item, idx) => (
+              <HLThinkingCard key={item.cycleTimestamp || idx} data={item} index={idx} />
             ))}
           </div>
         </div>

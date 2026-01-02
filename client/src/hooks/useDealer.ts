@@ -240,6 +240,27 @@ export const useDealer = (vault: VaultState, password: string) => {
                     cloid: intent.cloid
                 });
 
+                // Record snapshot for Performance Curve after trade
+                try {
+                    const { profitHistoryService } = await import('../services/profitHistoryService');
+                    const freshState = await hyperliquidService.getUserState(vault.hlPublicKey!);
+                    if (freshState?.marginSummary) {
+                        const portfolioValue = parseFloat(freshState.marginSummary.accountValue || '0');
+                        const unrealizedPnl = freshState.assetPositions?.reduce((acc: number, p: any) => 
+                            acc + parseFloat(p.position.unrealizedPnl || '0'), 0) || 0;
+                        profitHistoryService.recordSnapshot({
+                            timestamp: Date.now(),
+                            portfolioValue,
+                            unrealizedPnl,
+                            positionCount: freshState.assetPositions?.filter((p: any) => 
+                                parseFloat(p.position.szi) !== 0).length || 0,
+                            trigger: 'trade'
+                        });
+                    }
+                } catch (e) { 
+                    console.warn('[useDealer] Snapshot after trade failed:', e); 
+                }
+
             } catch (err: any) {
                 console.error("Execution Error:", err);
                 dealerStore.addLog('ERROR', `Execution Failed: ${err.message}`);
