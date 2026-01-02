@@ -251,8 +251,8 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
                     return;
                 }
 
-                // Fetch recent user fills (using shared cache)
-                const recentFills = await hyperliquidService.getUserFillsShared(vaultAddress);
+                // Fetch recent user fills (using shared cache) - get more fills for accurate Win Rate
+                const recentFills = await hyperliquidService.getUserFillsShared(vaultAddress, 500);
                 if (recentFills && Array.isArray(recentFills)) {
                     // Filter: Only show Dealer transactions (those with a cloid)
                     const dealerFills = recentFills.filter((f: any) => f.cloid || f.c);
