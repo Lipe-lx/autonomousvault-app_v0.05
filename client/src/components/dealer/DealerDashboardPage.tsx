@@ -106,6 +106,9 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
 
     // Reset metrics handler
     const handleResetMetrics = useCallback(async () => {
+        const confirmReset = window.confirm("Are you sure you want to reset the performance metrics? The chart and profit will start measuring from this moment.");
+        if (!confirmReset) return;
+
         const now = Date.now();
         setBaselineTimestamp(now);
         try {
