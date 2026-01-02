@@ -241,7 +241,7 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
 
     // Fetch History
     useEffect(() => {
-        if (!vaultAddress) return;
+        if (!vaultAddress || !baselineLoaded) return;
 
         const fetchHistory = async () => {
             try {
@@ -284,10 +284,13 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
         // Poll every 30s
         const interval = setInterval(fetchHistory, 30000);
         return () => clearInterval(interval);
-    }, [vaultAddress, baselineTimestamp, processPnlData]);
+    }, [vaultAddress, baselineTimestamp, baselineLoaded, processPnlData]);
 
     // Load REAL profit history from profitHistoryService
     useEffect(() => {
+        // Wait for baseline to load before fetching history to prevent flicker
+        if (!baselineLoaded) return;
+
         const loadProfitHistory = async () => {
             try {
                 const history = await profitHistoryService.getHistory(baselineTimestamp || undefined);
@@ -300,7 +303,7 @@ export const DealerDashboardPage: React.FC<DealerDashboardPageProps> = ({
         // Refresh every 30s to pick up new snapshots
         const interval = setInterval(loadProfitHistory, 30000);
         return () => clearInterval(interval);
-    }, [baselineTimestamp]);
+    }, [baselineTimestamp, baselineLoaded]);
 
     // Recalculate stats when baseline changes (for fills-based stats)
     useEffect(() => {
