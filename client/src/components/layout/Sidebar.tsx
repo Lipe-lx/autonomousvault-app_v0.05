@@ -73,7 +73,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, onClick, isSub
         {infoTooltip && (
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#4a4b53] hover:text-[#E7FE55] transition-all duration-200 cursor-help hover:scale-110 opacity-0 group-hover:opacity-100">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4a4b53] hover:text-[#E7FE55] transition-all duration-200 cursor-help hover:scale-110 opacity-0 group-hover:opacity-100">
                         <Info size={14} strokeWidth={2} />
                     </span>
                 </TooltipTrigger>
@@ -134,7 +134,7 @@ const NavGroup: React.FC<NavGroupProps> = ({ icon, label, isExpanded, onToggle, 
             {infoTooltip && (
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[#4a4b53] hover:text-[#E7FE55] transition-all duration-200 cursor-help hover:scale-110 opacity-0 group-hover:opacity-100">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4a4b53] hover:text-[#E7FE55] transition-all duration-200 cursor-help hover:scale-110 opacity-0 group-hover:opacity-100">
                             <Info size={14} strokeWidth={2} />
                         </span>
                     </TooltipTrigger>
