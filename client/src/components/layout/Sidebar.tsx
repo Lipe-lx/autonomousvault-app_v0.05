@@ -102,21 +102,15 @@ const NavGroup: React.FC<NavGroupProps> = ({ icon, label, isExpanded, onToggle, 
                 onClick={onToggle}
                 className={cn(
                     "w-full flex items-center justify-between px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl relative overflow-hidden",
-                    hasActiveChild
-                        ? "text-white bg-[#1a1b21]/80 backdrop-blur-sm"
-                        : "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40",
+                    "text-[#747580] hover:text-[#a0a1a8] hover:bg-[#1a1b21]/40",
                     infoTooltip && "pr-12"
                 )}
                 title={label}
             >
                 <div className="flex items-center gap-3">
-                    {/* Active indicator bar */}
-                    {hasActiveChild && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#E7FE55] rounded-full" />
-                    )}
+                    {/* Active indicator bar removed from parent group */}
                     <span className={cn(
-                        "flex items-center justify-center transition-colors ml-1",
-                        hasActiveChild && "text-[#E7FE55]"
+                        "flex items-center justify-center transition-colors ml-1"
                     )}>
                         {icon}
                     </span>
