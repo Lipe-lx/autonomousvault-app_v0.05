@@ -54,7 +54,7 @@ const categories: SuggestionCategory[] = [
             'Check my wallet balance',
             'Show SOL price',
             'List my token holdings',
-            'Transfer 1 SOL to...'
+            'Transfer 1 SOL to me'
         ]
     },
     {
