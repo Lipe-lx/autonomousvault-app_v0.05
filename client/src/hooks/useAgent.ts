@@ -1939,9 +1939,10 @@ ${recentFills.map((f: any) => {
                 const updated = [...prev, modelMessage];
 
                 // Auto-save conversation after model response (including toolResults)
-                if (vault.isUnlocked && password && activeConversationId) {
+                // Use currentConvId which was captured at the start of handleSendMessage to avoid stale closure
+                if (vault.isUnlocked && password && currentConvId) {
                     const conv: Conversation = {
-                        id: activeConversationId,
+                        id: currentConvId,
                         title: prev.length > 0 && prev[0].role === 'user' 
                             ? ConversationService.generateTitle(prev[0].content) 
                             : 'Conversation',
@@ -1972,9 +1973,10 @@ ${recentFills.map((f: any) => {
                 const updated = [...prev, errorMessage];
 
                 // Auto-save even on error so user sees what happened
-                if (vault.isUnlocked && password && activeConversationId) {
+                // Use currentConvId which was captured at the start of handleSendMessage to avoid stale closure
+                if (vault.isUnlocked && password && currentConvId) {
                     const conv: Conversation = {
-                        id: activeConversationId,
+                        id: currentConvId,
                         title: prev.length > 0 && prev[0].role === 'user' 
                             ? ConversationService.generateTitle(prev[0].content) 
                             : 'Conversation',
@@ -1999,6 +2001,14 @@ ${recentFills.map((f: any) => {
      * Loads a specific conversation into the context
      */
     const loadConversation = (conversation: Conversation) => {
+        console.log('[useAgent] Loading conversation:', conversation.id);
+        console.log('[useAgent] Messages count:', conversation.messages.length);
+        console.log('[useAgent] Messages:', conversation.messages.map(m => ({
+            id: m.id,
+            role: m.role,
+            contentPreview: m.content?.substring(0, 50),
+            hasToolResults: !!(m.toolResults && m.toolResults.length > 0)
+        })));
         setMessages(conversation.messages);
         setActiveConversationId(conversation.id);
     };

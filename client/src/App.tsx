@@ -896,8 +896,8 @@ export default function App() {
 
                         {activeTab === AppTab.HISTORY && (
                             <HistoryPage
-                                onSelectConversation={(id) => {
-                                    handleSelectConversation(id);
+                                onSelectConversation={async (id) => {
+                                    await handleSelectConversation(id);
                                     setActiveTab(AppTab.AGENT);
                                 }}
                             />
