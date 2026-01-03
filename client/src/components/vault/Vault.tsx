@@ -747,8 +747,12 @@ export const Vault: React.FC<VaultProps> = ({
 
 
             {/* Main Content Area */}
-            {/* Show configuration view if user hasn't completed initial setup OR if backup modals are open */}
-            {!hasCompletedInitialSetup || showBackupModal || showHLBackupModal || showPMBackupModal ? (
+            {/* Show configuration view if:
+                1. User hasn't completed initial setup, OR
+                2. Backup modals are open, OR
+                3. No wallets exist at all (fixes bug where Vault Locked appears before wallet creation)
+            */}
+            {!hasCompletedInitialSetup || showBackupModal || showHLBackupModal || showPMBackupModal || (!vault.publicKey && !vault.hlPublicKey && !vault.pmPublicKey) ? (
                 // --- CREATE / IMPORT VIEW - INDEPENDENT WALLETS ---
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
