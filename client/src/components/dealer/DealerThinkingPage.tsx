@@ -1,10 +1,28 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollText, Download, Trash2, Brain, Terminal, ChevronDown, ChevronRight } from 'lucide-react';
 import { DealerState } from '../../state/dealerStore';
 import { DealerReasoningLog } from './DealerReasoningLog';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
+
+// Hook to detect large screens (desktop/maximized)
+const useIsLargeScreen = (breakpoint: number = 1280) => {
+    const [isLargeScreen, setIsLargeScreen] = useState(
+        typeof window !== 'undefined' ? window.innerWidth >= breakpoint : false
+    );
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsLargeScreen(window.innerWidth >= breakpoint);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [breakpoint]);
+
+    return isLargeScreen;
+};
 
 interface DealerThinkingPageProps {
     status: DealerState;
@@ -77,8 +95,12 @@ export const DealerThinkingPage: React.FC<DealerThinkingPageProps> = ({
     onClearLogs
 }) => {
     const [activeTab, setActiveTab] = useState<'thinking' | 'logs'>('thinking');
-    const [showFeedbackManager, setShowFeedbackManager] = useState(false);
+    const [manualToggle, setManualToggle] = useState(false);
+    const isLargeScreen = useIsLargeScreen(1280);
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // On large screens, always show; on small screens, respect manual toggle
+    const showFeedbackManager = isLargeScreen || manualToggle;
 
     const exportLogs = () => {
         const dataStr = JSON.stringify(status.logs, null, 2);
@@ -138,7 +160,7 @@ export const DealerThinkingPage: React.FC<DealerThinkingPageProps> = ({
                          {/* Feedback Manager Toggle */}
                         {activeTab === 'thinking' && (
                             <button
-                                onClick={() => setShowFeedbackManager(!showFeedbackManager)}
+                                onClick={() => setManualToggle(!manualToggle)}
                                 className={`p-2 rounded border transition-colors flex items-center gap-2 text-[10px] uppercase tracking-wider font-semibold ${
                                     showFeedbackManager 
                                     ? 'bg-[#E7FE55] text-black border-[#E7FE55]' 
@@ -231,7 +253,7 @@ export const DealerThinkingPage: React.FC<DealerThinkingPageProps> = ({
                             exit={{ width: 0, opacity: 0 }}
                             className="h-full border-l border-[#232328] overflow-hidden"
                         >
-                            <DealerFeedbackManager onClose={() => setShowFeedbackManager(false)} />
+                            <DealerFeedbackManager onClose={() => setManualToggle(false)} />
                         </motion.div>
                     )}
                 </AnimatePresence>
