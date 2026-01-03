@@ -589,6 +589,13 @@ export class AIService {
       7. USER FEEDBACK (CRITICAL - LEARN FROM THIS):
       ${(marketData as any).userFeedback || "No recent feedback."}
 
+      USER FEEDBACK ACKNOWLEDGMENT (CRITICAL - IF FEEDBACK EXISTS):
+      - If 'userFeedback' contains a review for the coin you are analyzing, you MUST include a brief acknowledgment at the END of your "reason" field.
+      - Format: "[REVIEW CONSIDERED: <category>] <brief explanation of how you adjusted>"
+      - Example: "[REVIEW CONSIDERED: TOO_BULLISH] Reduced confidence and tightened TP based on user's prior assessment."
+      - This acknowledgment should be APPENDED to your normal reasoning, not replace it.
+      - If no feedback exists for this specific coin, do not add any acknowledgment.
+
       8. REASONING FORMAT (CRITICAL - MUST FOLLOW):
       7. LEVERAGE CONSTRAINT: If suggesting leverage, 'suggestedLeverage' MUST NOT exceed 'portfolio.settings.maxLeverage'. This is a hard limit set by the user.
       
@@ -779,6 +786,13 @@ export class AIService {
 
       USER FEEDBACK (CRITICAL - LEARN FROM THIS):
       ${(mergedMarketContext as any).userFeedback || "No recent feedback."}
+
+      USER FEEDBACK ACKNOWLEDGMENT (CRITICAL - IF FEEDBACK EXISTS):
+      - If 'userFeedback' contains a review for the coin you are analyzing, you MUST include a brief acknowledgment at the END of your "reason" field.
+      - Format: "[REVIEW CONSIDERED: <category>] <brief explanation of how you adjusted>"
+      - Example: "[REVIEW CONSIDERED: TOO_BULLISH] Reduced confidence and tightened TP based on user's prior assessment."
+      - This acknowledgment should be APPENDED to your normal reasoning, not replace it.
+      - If no feedback exists for this specific coin, do not add any acknowledgment.
 
       MACRO TIMEFRAME CONFIRMATION (CRITICAL FOR ACCURACY):
       - Each coin MAY include a 'macro' object with indicator values from a HIGHER timeframe.
