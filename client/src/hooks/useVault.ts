@@ -731,7 +731,10 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
     };
 
     const importSolanaVault = async () => {
-        if (!solanaPassword || !solanaImportKey) {
+        // Enforce single password policy: use existing main password if unlocked
+        const finalPassword = (vault.isUnlocked && password) ? password : solanaPassword;
+
+        if (!finalPassword || !solanaImportKey) {
             addNotification('Password and Private Key are required');
             return;
         }
@@ -742,7 +745,7 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
 
             // Encrypt secret key
             const secretKeyArray = Array.from(kp.secretKey);
-            const encrypted = await CryptoService.encrypt(JSON.stringify(secretKeyArray), solanaPassword);
+            const encrypted = await CryptoService.encrypt(JSON.stringify(secretKeyArray), finalPassword);
 
             // Save to user-scoped storage
             await StorageService.setItem(StorageService.getUserKey('agent_vault_pubkey'), kp.publicKey.toBase58());
@@ -757,6 +760,7 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
             }));
 
             setTempKeypair(kp);
+            setPassword(finalPassword); // Set session password
 
             addNotification('Solana Vault imported successfully');
             setIsImportingSolana(false);
@@ -770,7 +774,10 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
     };
 
     const importHyperliquidVault = async () => {
-        if (!hyperliquidPassword || !hlImportKey) {
+        // Enforce single password policy: use existing main password if unlocked
+        const finalPassword = (vault.isUnlocked && password) ? password : hyperliquidPassword;
+
+        if (!finalPassword || !hlImportKey) {
             addNotification('Password and Private Key are required');
             return;
         }
@@ -786,7 +793,7 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
             const wallet = new ethers.Wallet(privateKey);
 
             // Encrypt private key
-            const hlEncrypted = await CryptoService.encrypt(privateKey, hyperliquidPassword);
+            const hlEncrypted = await CryptoService.encrypt(privateKey, finalPassword);
 
             // Save to user-scoped storage
             await StorageService.setItem(StorageService.getUserKey('agent_hl_vault_pubkey'), wallet.address);
@@ -798,6 +805,8 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
                 hlPublicKey: wallet.address,
                 hlEncryptedPrivateKey: hlEncrypted
             }));
+
+            setPassword(finalPassword); // Set session password
 
             addNotification('Hyperliquid Vault imported successfully');
             setIsImportingHyperliquid(false);
@@ -854,7 +863,10 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
     };
 
     const importPolymarketVault = async () => {
-        if (!polymarketPassword || !pmImportKey) {
+        // Enforce single password policy: use existing main password if unlocked
+        const finalPassword = (vault.isUnlocked && password) ? password : polymarketPassword;
+
+        if (!finalPassword || !pmImportKey) {
             addNotification('Password and Private Key are required');
             return;
         }
@@ -870,7 +882,7 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
             const wallet = new ethers.Wallet(privateKey);
 
             // Encrypt private key
-            const pmEncrypted = await CryptoService.encrypt(privateKey, polymarketPassword);
+            const pmEncrypted = await CryptoService.encrypt(privateKey, finalPassword);
 
             // Save to user-scoped storage
             await StorageService.setItem(StorageService.getUserKey('agent_pm_vault_pubkey'), wallet.address);
@@ -882,6 +894,8 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
                 pmPublicKey: wallet.address,
                 pmEncryptedPrivateKey: pmEncrypted
             }));
+
+            setPassword(finalPassword); // Set session password
 
             addNotification('Polymarket Vault imported successfully');
             setIsImportingPolymarket(false);
