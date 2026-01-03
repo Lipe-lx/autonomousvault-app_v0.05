@@ -140,7 +140,7 @@
 }
 
 .markdown-content a {
-  color: #E7FE55;
+  color: #e7fe55;
   text-decoration: none;
 }
 
@@ -174,7 +174,7 @@
 }
 
 .markdown-content blockquote {
-  border-left: 2px solid #E7FE55;
+  border-left: 2px solid #e7fe55;
   padding-left: 1rem;
   margin-left: 0;
   margin-bottom: 1rem;
@@ -230,28 +230,48 @@
 
 /* Glass Panel Effect - Soft, visible with subtle hover */
 .glass-panel {
-  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(30, 32, 40, 0.95) 0%,
+    rgba(24, 26, 32, 0.9) 100%
+  );
   border: 1px solid rgba(60, 63, 75, 0.4);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
   transition: all 0.2s ease;
 }
 
 .glass-panel:hover {
-  background: linear-gradient(180deg, rgba(35, 37, 46, 0.98) 0%, rgba(28, 30, 38, 0.95) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(35, 37, 46, 0.98) 0%,
+    rgba(28, 30, 38, 0.95) 100%
+  );
   border-color: rgba(80, 84, 100, 0.5);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 /* Glass Panel Non-Hoverable (for nested elements) */
 .glass-panel-static {
-  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(30, 32, 40, 0.95) 0%,
+    rgba(24, 26, 32, 0.9) 100%
+  );
   border: 1px solid rgba(60, 63, 75, 0.4);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Glass Panel Interactive (stronger hover for buttons/cards) */
 .glass-panel-interactive {
-  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(30, 32, 40, 0.95) 0%,
+    rgba(24, 26, 32, 0.9) 100%
+  );
   border: 1px solid rgba(60, 63, 75, 0.4);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease;
@@ -259,7 +279,11 @@
 }
 
 .glass-panel-interactive:hover {
-  background: linear-gradient(180deg, rgba(40, 42, 52, 1) 0%, rgba(32, 34, 44, 0.98) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(40, 42, 52, 1) 0%,
+    rgba(32, 34, 44, 0.98) 100%
+  );
   border-color: rgba(100, 105, 125, 0.6);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
   transform: translateY(-1px);
@@ -267,7 +291,11 @@
 
 /* Network-specific Glass Panels with colored hover */
 .glass-panel-solana {
-  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(30, 32, 40, 0.95) 0%,
+    rgba(24, 26, 32, 0.9) 100%
+  );
   border: 1px solid rgba(155, 135, 245, 0.2);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease;
@@ -279,7 +307,11 @@
 }
 
 .glass-panel-hyperliquid {
-  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(30, 32, 40, 0.95) 0%,
+    rgba(24, 26, 32, 0.9) 100%
+  );
   border: 1px solid rgba(52, 211, 153, 0.2);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease;
@@ -291,7 +323,11 @@
 }
 
 .glass-panel-polymarket {
-  background: linear-gradient(180deg, rgba(30, 32, 40, 0.95) 0%, rgba(24, 26, 32, 0.9) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(30, 32, 40, 0.95) 0%,
+    rgba(24, 26, 32, 0.9) 100%
+  );
   border: 1px solid rgba(96, 165, 250, 0.2);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease;
@@ -319,6 +355,22 @@
   animation: slide-up 0.3s ease-out;
 }
 
+/* Fade In Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
 /* Swiss Status Indicator */
 .status-dot {
   @apply w-1.5 h-1.5 rounded-full;
@@ -338,7 +390,8 @@
 }
 
 .swiss-table th {
-  @apply text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 py-3 border-b border-[#232328];
+  @apply text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500
+    py-3 border-b border-[#232328];
 }
 
 .swiss-table td {

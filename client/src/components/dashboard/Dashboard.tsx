@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Line, ComposedChart, BarChart, Bar } from 'recharts';
-import { Wallet, Activity, TrendingUp, Clock, ArrowUpRight, ArrowDownLeft, ExternalLink, ChevronLeft, ChevronRight, Zap, Globe, RefreshCw, BarChartHorizontal, PieChart as PieChartIcon, Plus } from 'lucide-react';
+import { Wallet, Activity, TrendingUp, Clock, ArrowUpRight, ArrowDownLeft, ExternalLink, ChevronLeft, ChevronRight, Zap, Globe, RefreshCw, BarChartHorizontal, PieChart as PieChartIcon, Plus, BotMessageSquare } from 'lucide-react';
 import { StatCard } from '../shared/StatCard';
 import { COLORS, MOCK_POOL_PRICES } from '../../constants';
 import { VaultState, ScheduledTask, AppTab } from '../../types';
@@ -204,7 +204,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 }}
                                 className="p-1.5 rounded bg-[#E7FE55]/15 text-[#E7FE55] group-hover:bg-[#E7FE55] group-hover:text-black transition-colors"
                             >
-                                <Plus size={16} />
+                                <BotMessageSquare size={16} />
                             </motion.div>
                             <h3 className="text-[#E7FE55] font-medium text-sm">New Conversation</h3>
                         </div>
@@ -617,7 +617,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 Open Trading
                             </h3>
                             <button
-                                onClick={() => setActiveTab(AppTab.HYPERLIQUID)}
+                                onClick={() => setActiveTab(AppTab.VAULT_DEALER)}
                                 className="text-[10px] px-3 py-1.5 rounded uppercase tracking-wider font-medium transition-colors flex items-center gap-2 text-[#747580] hover:text-[#E7FE55] bg-transparent hover:bg-[#E7FE55]/10 border border-[#232328] hover:border-[#E7FE55]/30"
                             >
                                 <TrendingUp size={12} />

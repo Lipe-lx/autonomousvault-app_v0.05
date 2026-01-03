@@ -1,8 +1,9 @@
-import React, { useRef, useEffect, useMemo, useState } from 'react';
+import React, { useRef, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Bot, Send, User, Sparkles, CheckCircle, AlertTriangle, Clock, Info, Lock, Unlock, Settings, ArrowRight, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Bot, Send, User, Sparkles, CheckCircle, AlertTriangle, Clock, Info, Lock, Unlock, Settings, ArrowRight, ThumbsUp, ThumbsDown, Key } from 'lucide-react';
+import { aiConfigStore } from '../../state/aiConfigStore';
 import { AgentMessage, AppTab } from '../../types';
 import { ActionSummaryPanel } from './ActionSummaryPanel';
 import { StructuredResultRenderer } from '../chat/StructuredResultRenderer';
@@ -53,6 +54,13 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
     // State for message ratings
     const [messageRatings, setMessageRatings] = useState<Map<string, 'positive' | 'negative'>>(new Map());
     const [negativeFeedbackMessageId, setNegativeFeedbackMessageId] = useState<string | null>(null);
+    
+    // Check if API key is configured for the operator component
+    const aiConfig = useSyncExternalStore(
+        aiConfigStore.subscribe.bind(aiConfigStore),
+        aiConfigStore.getSnapshot.bind(aiConfigStore)
+    );
+    const isApiKeyConfigured = aiConfigStore.isComponentConfigValid('operator');
 
     // Handle rating submission
     const handleRating = async (messageId: string, rating: 'positive' | 'negative') => {
@@ -115,6 +123,54 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages, scrollRef]);
+
+    // API key not configured state
+    if (!isApiKeyConfigured && hasVault && isVaultUnlocked) {
+        return (
+            <motion.div
+                className="flex flex-col h-[calc(100vh-8rem)] items-center justify-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+            >
+                <div className="max-w-sm w-full mx-auto space-y-5 p-8">
+                    <div className="text-center">
+                        <motion.div
+                            className="w-14 h-14 bg-[#1a1b21] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#232328]"
+                            animate={{ scale: [1, 1.03, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                        >
+                            <Key size={28} className="text-[#E7FE55]" />
+                        </motion.div>
+                        <h2 className="text-lg font-semibold text-white tracking-tight">API Key Required</h2>
+                        <p className="text-[#747580] mt-2 text-sm">
+                            Configure an API key to use Vault Operator.
+                        </p>
+                    </div>
+
+                    <motion.div
+                        animate={{ 
+                            boxShadow: [
+                                '0 0 10px rgba(231, 254, 85, 0.3)',
+                                '0 0 25px rgba(231, 254, 85, 0.5)',
+                                '0 0 10px rgba(231, 254, 85, 0.3)'
+                            ]
+                        }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        className="rounded-lg"
+                    >
+                        <Button 
+                            onClick={() => onNavigate?.(AppTab.CONFIGURATION)}
+                            className="w-full bg-[#E7FE55] hover:bg-[#f0ff7a] text-black font-medium"
+                            size="lg"
+                        >
+                            <Settings size={18} />
+                            Go to Configuration
+                        </Button>
+                    </motion.div>
+                </div>
+            </motion.div>
+        );
+    }
 
     // Vault locked state
     if (!isVaultUnlocked && hasVault) {

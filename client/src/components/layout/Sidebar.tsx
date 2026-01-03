@@ -3,15 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ShieldCheck,
     Activity,
-    LockKeyhole,
-    Bot,
-    Zap,
+    Landmark,
+    WalletCards,
+    BotMessageSquare,
     Coins,
-    TrendingUp,
-    Droplets,
     ChevronDown,
-    ChevronRight,
-    Briefcase,
+    BriefcaseBusiness,
     Info
 } from 'lucide-react';
 import { AppTab } from '../../types';
@@ -370,7 +367,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <nav className="space-y-1 flex-1">
                     {/* Vault Operator Group */}
                     <NavGroupSplit
-                        icon={<Bot size={18} />}
+                        icon={<BotMessageSquare size={18} />}
                         label="Vault Operator"
                         isExpanded={isVaultOperatorExpanded}
                         onToggle={(e) => {
@@ -397,7 +394,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                     {/* Vault Dealer - Parent with expandable subpages */}
                     <NavGroup
-                        icon={<Briefcase size={18} />}
+                        icon={<BriefcaseBusiness size={18} />}
                         label="Vault Dealer"
                         isExpanded={isDealerExpanded}
                         onToggle={() => setIsDealerExpanded(!isDealerExpanded)}
@@ -406,7 +403,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                         {/* Hyperliquid */}
                         <NavItem
-                            icon={<Zap size={16} />}
+                            icon={<WalletCards size={16} />}
                             label="Hyperliquid"
                             isActive={isDealerActive}
                             onClick={() => handleNavigation(AppTab.VAULT_DEALER)}
@@ -415,7 +412,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         
                         {/* Solana */}
                         <NavItem
-                            icon={<Droplets size={16} />}
+                            icon={<WalletCards size={16} />}
                             label="Solana"
                             isActive={isSolanaDealerActive}
                             onClick={() => handleNavigation(AppTab.SOLANA_DEALER)}
@@ -424,7 +421,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         
                         {/* Polymarket */}
                         <NavItem
-                            icon={<TrendingUp size={16} />}
+                            icon={<WalletCards size={16} />}
                             label="Polymarket"
                             isActive={isPolymarketDealerActive}
                             onClick={() => handleNavigation(AppTab.POLYMARKET_DEALER)}
@@ -434,7 +431,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                     {/* Vault */}
                     <NavItem
-                        icon={<LockKeyhole size={18} />}
+                        icon={<Landmark size={18} />}
                         label="Vault"
                         isActive={activeTab === AppTab.VAULT}
                         onClick={() => handleNavigation(AppTab.VAULT)}

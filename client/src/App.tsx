@@ -42,6 +42,26 @@ export default function App() {
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
+    // Solana Policy tutorial tooltip state
+    const [showSolanaPolicyTooltip, setShowSolanaPolicyTooltip] = useState(() => {
+        return localStorage.getItem('solana_policy_tooltip_dismissed') !== 'true';
+    });
+
+    const dismissSolanaPolicyTooltip = () => {
+        setShowSolanaPolicyTooltip(false);
+        localStorage.setItem('solana_policy_tooltip_dismissed', 'true');
+    };
+
+    // User Settings tutorial tooltip state
+    const [showUserSettingsTooltip, setShowUserSettingsTooltip] = useState(() => {
+        return localStorage.getItem('user_settings_tooltip_dismissed') !== 'true';
+    });
+
+    const dismissUserSettingsTooltip = () => {
+        setShowUserSettingsTooltip(false);
+        localStorage.setItem('user_settings_tooltip_dismissed', 'true');
+    };
+
     // Configuration Tab State
     const [activeConfigTab, setActiveConfigTab] = useState<'providers' | 'user'>('providers');
 
@@ -329,15 +349,52 @@ export default function App() {
                             {/* Divider */}
                             <div className="h-6 w-px bg-[#232328]" />
 
-                            {/* Solana Policy Button */}
-                            <button
-                                onClick={() => setActiveTab(AppTab.SOLANA_DEALER_POLICY)}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded bg-[#14151a] hover:bg-[#1a1b21] text-[#a0a1a8] hover:text-white text-sm font-medium transition-colors border border-[#232328]"
-                                title="Solana Dealer Policy"
-                            >
-                                <Shield size={14} />
-                                <span className="hidden md:inline">Solana Policy</span>
-                            </button>
+                            {/* Solana Policy Button with Tutorial Tooltip */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => {
+                                        dismissSolanaPolicyTooltip();
+                                        setActiveTab(AppTab.SOLANA_DEALER_POLICY);
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded bg-[#14151a] hover:bg-[#1a1b21] text-[#a0a1a8] hover:text-white text-sm font-medium transition-colors border border-[#232328]"
+                                    title="Solana Dealer Policy"
+                                >
+                                    <Shield size={14} />
+                                    <span className="hidden md:inline">Solana Policy</span>
+                                </button>
+
+                                {/* Tutorial Tooltip */}
+                                {showSolanaPolicyTooltip && messages.length === 0 && (
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 z-50 animate-fadeIn">
+                                        {/* Arrow */}
+                                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] border-b-[#E7FE55]" />
+                                        
+                                        {/* Tooltip Content */}
+                                        <div className="bg-[#1a1b21] border border-[#E7FE55] rounded-lg p-4 shadow-lg shadow-[#E7FE55]/10 w-72">
+                                            <div className="flex items-start gap-3">
+                                                <div className="p-1.5 bg-[#E7FE55]/10 rounded-lg shrink-0">
+                                                    <Shield size={16} className="text-[#E7FE55]" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="text-sm font-semibold text-white mb-1">Configure Solana Policy</h4>
+                                                    <p className="text-xs text-[#a0a1a8] leading-relaxed">
+                                                        Get more accurate LP recommendations by setting your risk preferences and strategy.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    dismissSolanaPolicyTooltip();
+                                                }}
+                                                className="mt-3 w-full py-1.5 text-xs font-medium text-[#747580] hover:text-white transition-colors"
+                                            >
+                                                Got it
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Right: Actions */}
@@ -636,15 +693,54 @@ export default function App() {
                                     >
                                         AI Providers
                                     </button>
-                                    <button
-                                        onClick={() => setActiveConfigTab('user')}
-                                        className={`px-3 py-1.5 rounded text-[11px] font-medium uppercase tracking-[0.05em] transition-colors ${activeConfigTab === 'user'
-                                            ? 'bg-[#E7FE55] text-black'
-                                            : 'text-[#747580] hover:text-[#a0a1a8]'
-                                            }`}
-                                    >
-                                        User Settings
-                                    </button>
+                                    
+                                    {/* User Settings Button with Tutorial Tooltip */}
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => {
+                                                dismissUserSettingsTooltip();
+                                                setActiveConfigTab('user');
+                                            }}
+                                            className={`px-3 py-1.5 rounded text-[11px] font-medium uppercase tracking-[0.05em] transition-colors ${activeConfigTab === 'user'
+                                                ? 'bg-[#E7FE55] text-black'
+                                                : 'text-[#747580] hover:text-[#a0a1a8]'
+                                                }`}
+                                        >
+                                            User Settings
+                                        </button>
+
+                                        {/* Tutorial Tooltip */}
+                                        {showUserSettingsTooltip && activeConfigTab === 'providers' && (
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 z-50 animate-fadeIn">
+                                                {/* Arrow */}
+                                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] border-b-[#E7FE55]" />
+                                                
+                                                {/* Tooltip Content */}
+                                                <div className="bg-[#1a1b21] border border-[#E7FE55] rounded-lg p-4 shadow-lg shadow-[#E7FE55]/10 w-72">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="p-1.5 bg-[#E7FE55]/10 rounded-lg shrink-0">
+                                                            <Settings size={16} className="text-[#E7FE55]" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className="text-sm font-semibold text-white mb-1">User Settings</h4>
+                                                            <p className="text-xs text-[#a0a1a8] leading-relaxed">
+                                                                Manage your account, configure Supabase connection, and delete your local vault data.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            dismissUserSettingsTooltip();
+                                                        }}
+                                                        className="mt-3 w-full py-1.5 text-xs font-medium text-[#747580] hover:text-white transition-colors"
+                                                    >
+                                                        Got it
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
