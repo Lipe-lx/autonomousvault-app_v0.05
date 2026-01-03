@@ -180,7 +180,7 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                                             value={localSettings.maxLeverage || 1}
                                             onChange={(val) => handleLocalUpdate({ maxLeverage: val })}
                                         />
-                                        <span className="text-[10px] text-[#747580]">x</span>
+                                        <span className="text-[16px] text-[#747580]">x</span>
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                         <button onClick={() => handleLocalUpdate({ maxLeverage: (localSettings.maxLeverage || 1) + 1 })} className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"><Plus size={8} /></button>
@@ -191,7 +191,7 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
 
                             {/* Pos/Cycle */}
                             <div className="bg-[#0f1015] p-2 rounded border border-[#232328]">
-                                <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1">Pos/Cycle</label>
+                                <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1">Position/Cycle</label>
                                 <div className="flex items-center justify-between">
                                     <FormattedNumberInput
                                         className="text-sm font-bold font-mono text-white bg-transparent outline-none w-10"
@@ -222,38 +222,45 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                             </div>
                         </div>
 
-                        {/* Toggles Row - Aggressive + SL + TP */}
-                        <div className="flex items-center gap-4 pt-2 border-t border-[#232328]">
-                            {/* Aggressive */}
-                            <label className="flex items-center gap-1.5 cursor-pointer group">
-                                <Zap className="h-3 w-3 text-red-400" />
-                                <span className="text-[10px] text-[#747580] group-hover:text-white">Aggressive</span>
-                                <button
-                                    onClick={() => handleLocalUpdate({ aggressiveMode: !localSettings.aggressiveMode })}
-                                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${localSettings.aggressiveMode ? 'bg-red-500' : 'bg-[#3a3b42]'}`}
-                                >
-                                    <span className={`${localSettings.aggressiveMode ? 'translate-x-4' : 'translate-x-0.5'} inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform`} />
-                                </button>
-                            </label>
-
-                            <div className="w-px h-4 bg-[#232328]" />
-
+                        {/* Toggles Row - SL + TP on left, Aggressive on right */}
+                        <div className="flex items-center justify-between pt-2 border-t border-[#232328]">
+                            <div className="flex items-center gap-4">
                             {/* Stop Loss */}
                             <div className="flex items-center gap-1.5">
                                 <ShieldCheck className="h-3 w-3 text-red-400" />
                                 <span className="text-[10px] text-[#747580]">STOP LOSS</span>
                                 {localSettings.stopLossEnabled && (
-                                    <>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => handleLocalUpdate({ stopLossPercent: Math.max(0.5, (localSettings.stopLossPercent ?? 2) - 0.5) })}
+                                            className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"
+                                        >
+                                            <Minus size={8} />
+                                        </button>
                                         <input
-                                            type="number"
-                                            step="0.5"
+                                            type="text"
+                                            inputMode="decimal"
                                             value={localSettings.stopLossPercent ?? ''}
                                             placeholder="AI"
-                                            onChange={(e) => handleLocalUpdate({ stopLossPercent: e.target.value ? parseFloat(e.target.value) : null })}
-                                            className="w-10 bg-[#0f1015] border border-[#232328] rounded px-1 py-0.5 text-[10px] text-white font-mono focus:outline-none placeholder:text-[#747580]"
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === '' || val === null) {
+                                                    handleLocalUpdate({ stopLossPercent: null });
+                                                } else {
+                                                    const num = parseFloat(val);
+                                                    if (!isNaN(num)) handleLocalUpdate({ stopLossPercent: num });
+                                                }
+                                            }}
+                                            className="w-8 bg-[#0f1015] border border-[#232328] rounded px-1 py-0.5 text-[10px] text-white font-mono text-center focus:outline-none placeholder:text-[#747580]"
                                         />
+                                        <button
+                                            onClick={() => handleLocalUpdate({ stopLossPercent: (localSettings.stopLossPercent ?? 1.5) + 0.5 })}
+                                            className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#E7FE55] transition-colors"
+                                        >
+                                            <Plus size={8} />
+                                        </button>
                                         <span className="text-[9px] text-[#747580]">%</span>
-                                    </>
+                                    </div>
                                 )}
                                 <button
                                     onClick={() => handleLocalUpdate({ stopLossEnabled: !localSettings.stopLossEnabled })}
@@ -270,17 +277,37 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                                 <Target className="h-3 w-3 text-[#34d399]" />
                                 <span className="text-[10px] text-[#747580]">TAKE PROFIT</span>
                                 {localSettings.takeProfitEnabled && (
-                                    <>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => handleLocalUpdate({ takeProfitPercent: Math.max(0.5, (localSettings.takeProfitPercent ?? 2) - 0.5) })}
+                                            className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#747580] hover:text-white transition-colors"
+                                        >
+                                            <Minus size={8} />
+                                        </button>
                                         <input
-                                            type="number"
-                                            step="0.5"
+                                            type="text"
+                                            inputMode="decimal"
                                             value={localSettings.takeProfitPercent ?? ''}
                                             placeholder="AI"
-                                            onChange={(e) => handleLocalUpdate({ takeProfitPercent: e.target.value ? parseFloat(e.target.value) : null })}
-                                            className="w-10 bg-[#0f1015] border border-[#232328] rounded px-1 py-0.5 text-[10px] text-white font-mono focus:outline-none placeholder:text-[#747580]"
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === '' || val === null) {
+                                                    handleLocalUpdate({ takeProfitPercent: null });
+                                                } else {
+                                                    const num = parseFloat(val);
+                                                    if (!isNaN(num)) handleLocalUpdate({ takeProfitPercent: num });
+                                                }
+                                            }}
+                                            className="w-8 bg-[#0f1015] border border-[#232328] rounded px-1 py-0.5 text-[10px] text-white font-mono text-center focus:outline-none placeholder:text-[#747580]"
                                         />
+                                        <button
+                                            onClick={() => handleLocalUpdate({ takeProfitPercent: (localSettings.takeProfitPercent ?? 1.5) + 0.5 })}
+                                            className="p-0.5 rounded bg-[#232328] hover:bg-[#303036] text-[#34d399] transition-colors"
+                                        >
+                                            <Plus size={8} />
+                                        </button>
                                         <span className="text-[9px] text-[#747580]">%</span>
-                                    </>
+                                    </div>
                                 )}
                                 <button
                                     onClick={() => handleLocalUpdate({ takeProfitEnabled: !localSettings.takeProfitEnabled })}
@@ -289,6 +316,19 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                                     <span className={`${localSettings.takeProfitEnabled ? 'translate-x-4' : 'translate-x-0.5'} inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform`} />
                                 </button>
                             </div>
+                            </div>
+
+                            {/* Aggressive - Right aligned */}
+                            <label className="flex items-center gap-1.5 cursor-pointer group">
+                                <Zap className="h-3 w-3 text-red-400" />
+                                <span className="text-[10px] text-[#747580] group-hover:text-white">Aggressive</span>
+                                <button
+                                    onClick={() => handleLocalUpdate({ aggressiveMode: !localSettings.aggressiveMode })}
+                                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${localSettings.aggressiveMode ? 'bg-red-500' : 'bg-[#3a3b42]'}`}
+                                >
+                                    <span className={`${localSettings.aggressiveMode ? 'translate-x-4' : 'translate-x-0.5'} inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform`} />
+                                </button>
+                            </label>
                         </div>
                     </div>
 
@@ -299,7 +339,7 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
-                                <label className="block text-[10px] text-[#747580] font-medium mb-1.5 uppercase tracking-wider">Timeframe</label>
+                                <label className="block text-[10px] text-[#747580] font-medium mb-1.5 uppercase tracking-wider">Indicators Timeframe</label>
                                 <select
                                     className="w-full bg-transparent text-sm font-mono text-white focus:outline-none cursor-pointer [&>option]:bg-[#0f1015]"
                                     value={localSettings.analysisTimeframe || '60'}
@@ -329,7 +369,7 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                             </div>
                             <div className="bg-[#0f1015] p-3 rounded border border-[#232328]">
                                 <label className="block text-[10px] text-[#747580] font-medium mb-1.5 uppercase tracking-wider">
-                                    <Clock className="inline h-3 w-3 mr-1 opacity-50" />Interval
+                                    <Clock className="inline h-3 w-3 mr-1 opacity-50" />Interval/Cycle
                                 </label>
                                 <TimeIntervalInput
                                     value={localSettings.checkIntervalSeconds || 60}
