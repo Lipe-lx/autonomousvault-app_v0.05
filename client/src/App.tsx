@@ -334,15 +334,8 @@ export default function App() {
                             </button>
                         </div>
 
-                        {/* Right: Status & Actions */}
+                        {/* Right: Actions */}
                         <div className="flex items-center gap-4">
-                            <div className="text-right hidden md:block">
-                                <div className="text-[9px] uppercase tracking-[0.05em] text-[#5a5b63]">System Status</div>
-                                <div className="flex items-center justify-end gap-1.5 text-[#E7FE55] text-[11px] font-medium">
-                                    <div className="w-1 h-1 bg-[#E7FE55] rounded-full" />
-                                    Online
-                                </div>
-                            </div>
 
                             {/* Feedback Button */}
                             <button
@@ -691,15 +684,8 @@ export default function App() {
                                 </div>
                             )}
 
-                            {/* Right: Status & Actions */}
+                            {/* Right: Actions */}
                             <div className="flex items-center gap-4">
-                                <div className="text-right hidden md:block">
-                                    <div className="text-[9px] uppercase tracking-[0.05em] text-[#5a5b63]">System Status</div>
-                                    <div className="flex items-center justify-end gap-1.5 text-[#E7FE55] text-[11px] font-medium">
-                                        <div className="w-1 h-1 bg-[#E7FE55] rounded-full" />
-                                        Online
-                                    </div>
-                                </div>
 
                                 {/* Feedback Button */}
                                 <button

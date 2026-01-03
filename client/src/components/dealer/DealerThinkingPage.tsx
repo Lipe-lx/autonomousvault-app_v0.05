@@ -144,10 +144,10 @@ export const DealerThinkingPage: React.FC<DealerThinkingPageProps> = ({
                                     ? 'bg-[#E7FE55] text-black border-[#E7FE55]' 
                                     : 'bg-[#1a1b21] text-[#747580] border-[#232328] hover:text-white'
                                 }`}
-                                title="Manage Feedback"
+                                title="Rate the dealer's trading decisions to fine-tune its behavior."
                             >
                                 <MessageSquare className="h-4 w-4" />
-                                Feedback
+                                Decision Review
                             </button>
                         )}
                         
