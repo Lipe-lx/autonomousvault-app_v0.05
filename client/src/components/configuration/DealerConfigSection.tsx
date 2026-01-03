@@ -205,9 +205,9 @@ export const DealerConfigSection: React.FC<DealerConfigSectionProps> = ({
                                 </div>
                             </div>
 
-                            {/* Max Size */}
+                            {/* Max Margin */}
                             <div className="bg-[#0f1015] p-2 rounded border border-[#232328]">
-                                <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1">Max Size ($)</label>
+                                <label className="block text-[9px] text-[#747580] uppercase tracking-wider mb-1">Max Margin ($)</label>
                                 <div className="flex items-center justify-between">
                                     <FormattedNumberInput
                                         className="text-sm font-bold font-mono text-white bg-transparent outline-none w-24"

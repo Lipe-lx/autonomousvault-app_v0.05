@@ -737,12 +737,6 @@ export class DealerService {
                 dealerStore.addLog('SIGNAL', `🎯 Executing ${action} on ${coin} (${(confidence * 100).toFixed(0)}% confidence)`);
 
                 if (this.executor) {
-                    // Calculate Size
-                    let intendedSize = decision.sizeUSDC || state.settings.maxPositionSizeUSDC || 20;
-
-                    if (state.settings.maxPositionSizeUSDC) {
-                        intendedSize = Math.min(intendedSize, state.settings.maxPositionSizeUSDC);
-                    }
                     // Calculate and cap leverage to user's max
                     const suggestedLeverage = decision.suggestedLeverage || state.settings.maxLeverage || 1;
                     const leverage = Math.min(suggestedLeverage, state.settings.maxLeverage || 1);
@@ -752,11 +746,20 @@ export class DealerService {
                         dealerStore.addLog('INFO', `⚠️ Leverage capped for ${coin}: ${suggestedLeverage}x → ${leverage}x (max: ${state.settings.maxLeverage}x)`);
                     }
 
+                    // Calculate Size: maxPositionSizeUSDC is the MARGIN (collateral), 
+                    // multiply by leverage to get the notional position size
+                    const maxMargin = state.settings.maxPositionSizeUSDC || 20;
+                    const aiSuggestedMargin = decision.sizeUSDC ? decision.sizeUSDC / leverage : maxMargin;
+                    const effectiveMargin = Math.min(aiSuggestedMargin, maxMargin);
+                    let intendedSize = effectiveMargin * leverage;
+
+                    // Cap to affordable size (balance × leverage × safety margin)
                     const availableBalance = this.vaultContext.balance || 0;
                     const maxAffordableSize = availableBalance * leverage * 0.95;
 
                     if (intendedSize > maxAffordableSize) {
                         intendedSize = maxAffordableSize;
+                        dealerStore.addLog('INFO', `📊 Size capped to balance: $${intendedSize.toFixed(0)} (margin: $${(intendedSize/leverage).toFixed(0)})`);
                     }
 
                     if (intendedSize < 10 && action !== 'CLOSE') {

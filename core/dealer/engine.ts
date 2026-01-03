@@ -96,23 +96,25 @@ export function canOpenPosition(
 /**
  * Calculate position size with risk constraints
  * 
- * @param suggestedSize - AI suggested size in USDC
+ * @param suggestedSize - AI suggested notional size in USDC
  * @param balance - Available balance
  * @param leverage - Leverage to use
- * @param maxPositionSize - Max position size setting
- * @returns Adjusted position size
+ * @param maxMargin - Max margin (collateral) setting - final size = margin × leverage
+ * @returns Adjusted notional position size
  */
 export function calculatePositionSize(
     suggestedSize: number,
     balance: number,
     leverage: number,
-    maxPositionSize?: number
+    maxMargin?: number
 ): number {
     let size = suggestedSize;
 
-    // Cap to max position size if set
-    if (maxPositionSize) {
-        size = Math.min(size, maxPositionSize);
+    // Cap to max margin × leverage if set
+    // maxMargin represents collateral limit, not notional limit
+    if (maxMargin) {
+        const maxNotional = maxMargin * leverage;
+        size = Math.min(size, maxNotional);
     }
 
     // Cap to 95% of affordable size

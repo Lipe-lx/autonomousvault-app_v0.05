@@ -473,14 +473,15 @@ export class HyperliquidService {
 
     async getOpenOrders(address: string) {
         try {
+            // Use frontendOpenOrders for additional info including trigger conditions
             const response = await this.throttledFetch(
                 INFO_API_URL,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: 'openOrders', user: address })
+                    body: JSON.stringify({ type: 'frontendOpenOrders', user: address })
                 },
-                `openOrders:${address}`,
+                `frontendOpenOrders:${address}`,
                 this.CACHE_TTL_MS,
                 'openOrders'
             );
