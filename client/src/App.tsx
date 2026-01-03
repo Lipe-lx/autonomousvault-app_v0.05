@@ -47,6 +47,17 @@ export default function App() {
 
     // Vault Tab State
     const [activeVaultTab, setActiveVaultTab] = useState<VaultTab>('main');
+    // Track if user has completed initial wallet setup (clicked "Go to App")
+    const [hasCompletedInitialSetup, setHasCompletedInitialSetup] = useState(() => {
+        return localStorage.getItem('agent_completed_setup') === 'true';
+    });
+
+    // Persist setup state
+    useEffect(() => {
+        if (hasCompletedInitialSetup) {
+            localStorage.setItem('agent_completed_setup', 'true');
+        }
+    }, [hasCompletedInitialSetup]);
 
     // Auth
     const { user, logout } = useAuth();
@@ -156,12 +167,7 @@ export default function App() {
         }
     }, [activeTab, vault.isUnlocked, hasVault]);
 
-    // Redirect to Dashboard on Unlock
-    useEffect(() => {
-        if (vault.isUnlocked) {
-            setActiveTab(AppTab.DASHBOARD);
-        }
-    }, [vault.isUnlocked]);
+
 
     const {
         portfolioHistoryDaily,
@@ -459,7 +465,7 @@ export default function App() {
                                 <div className="flex items-center gap-4">
                                     <div>
                                         <h2 className="text-xl font-semibold text-white tracking-tight">
-                                            {activeTab === AppTab.DASHBOARD && 'Dashboard'}
+                                            {activeTab === AppTab.DASHBOARD && 'Overview'}
                                             {activeTab === AppTab.VAULT && 'Vault'}
                                             {activeTab === AppTab.SCHEDULER && 'Automations'}
                                             {[AppTab.VAULT_DEALER, AppTab.DEALER_DASHBOARD, AppTab.DEALER_THINKING, AppTab.DEALER_CONFIG, AppTab.DEALER_PROMPT].includes(activeTab) && 'Hyperliquid Dealer'}
@@ -823,11 +829,10 @@ export default function App() {
                                 assetAllocationData={assetAllocationData}
                                 activityFeed={activityFeed}
                                 activityDisplayCount={activityDisplayCount}
-                                setActiveTab={setActiveTab}
+                                setActivityDisplayCount={setActivityDisplayCount}
                                 refreshData={handleRefreshData}
-                                onNewChat={handleNewChat} setActivityDisplayCount={function (count: number): void {
-                                    throw new Error('Function not implemented.');
-                                }} />
+                                onNewChat={handleNewChat}
+                            />
                         )}
 
                         {activeTab === AppTab.VAULT && (
@@ -851,6 +856,9 @@ export default function App() {
                                 handleWithdrawPM={handleWithdrawPM}
                                 importVault={importVault}
                                 addNotification={addNotification}
+                                showBackupModal={showBackupModal}
+                                showHLBackupModal={showHLBackupModal}
+                                showPMBackupModal={showPMBackupModal}
                                 // Individual Wallet Props
                                 isImportingSolana={isImportingSolana}
                                 setIsImportingSolana={setIsImportingSolana}
@@ -879,6 +887,14 @@ export default function App() {
                                 setActiveTab={setActiveTab}
                                 activeVaultTab={activeVaultTab}
                                 setActiveVaultTab={setActiveVaultTab}
+                                hasCompletedInitialSetup={hasCompletedInitialSetup}
+                                setHasCompletedInitialSetup={setHasCompletedInitialSetup}
+                                connectOwnerWallet={connectOwnerWallet}
+                                disconnectOwnerWallet={disconnectOwnerWallet}
+                                connectHLOwnerWallet={connectHLOwnerWallet}
+                                disconnectHLOwnerWallet={disconnectHLOwnerWallet}
+                                connectPMOwnerWallet={connectPMOwnerWallet}
+                                disconnectPMOwnerWallet={disconnectPMOwnerWallet}
                             />
                         )}
 
@@ -999,10 +1015,6 @@ export default function App() {
                     setBackupKey={setBackupKey}
                     setShowBackupModal={setShowBackupModal}
                     addNotification={addNotification}
-                    onClose={() => {
-                        // After Solana backup is confirmed, show Hyperliquid backup
-                        setShowHLBackupModal(true);
-                    }}
                 />
             )}
 
@@ -1025,7 +1037,10 @@ export default function App() {
             )}
 
             {/* Legal Consent Modal */}
-            <ConsentModal userId={user?.uid || null} />
+            <ConsentModal 
+                userId={user?.uid || null} 
+                onAccept={() => setActiveTab(AppTab.VAULT)}
+            />
 
             {/* Feedback Modal */}
             <FeedbackModal

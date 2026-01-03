@@ -156,6 +156,106 @@ const NavGroup: React.FC<NavGroupProps> = ({ icon, label, isExpanded, onToggle, 
     </div>
 );
 
+interface NavGroupSplitProps {
+    icon: React.ReactNode;
+    label: string;
+    isExpanded: boolean;
+    onToggle: (e: React.MouseEvent) => void;
+    onNavigate: () => void;
+    isActive: boolean;
+    hasActiveChild: boolean;
+    children: React.ReactNode;
+    infoTooltip?: string;
+}
+
+const NavGroupSplit: React.FC<NavGroupSplitProps> = ({ 
+    icon, 
+    label, 
+    isExpanded, 
+    onToggle, 
+    onNavigate, 
+    isActive, 
+    hasActiveChild, 
+    children, 
+    infoTooltip 
+}) => (
+    <div className="space-y-0.5">
+        <div className="relative flex items-center group">
+            <div className={cn(
+                "w-full flex items-center transition-all duration-200 rounded-xl relative overflow-hidden",
+                isActive ? "bg-[#1a1b21]/80 backdrop-blur-sm" : "hover:bg-[#1a1b21]/40"
+            )}>
+                {/* Main Navigation Area */}
+                <button
+                    onClick={onNavigate}
+                    className={cn(
+                        "flex items-center gap-3 pl-3 pr-3 py-2.5 text-[13px] font-medium whitespace-nowrap",
+                        isActive ? "text-white" : "text-[#747580] hover:text-[#a0a1a8]"
+                    )}
+                    title={label}
+                >
+                    {isActive && (
+                        <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1 h-6 rounded-full bg-[#E7FE55]" />
+                    )}
+                    <span className={cn(
+                        "flex items-center justify-center transition-colors ml-1",
+                        isActive && "text-[#E7FE55]"
+                    )}>
+                        {icon}
+                    </span>
+                    <span className="tracking-wide truncate">{label}</span>
+                </button>
+
+                {/* Toggle Button */}
+                <button
+                    onClick={onToggle}
+                    className={cn(
+                        "p-2.5 pl-0 flex items-center justify-center transition-colors z-10",
+                        "text-[#5a5b63] hover:text-[#a0a1a8]",
+                        infoTooltip ? "mr-9" : "mr-0" 
+                    )}
+                >
+                    <motion.span
+                        initial={false}
+                        animate={{ rotate: isExpanded ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <ChevronDown size={14} />
+                    </motion.span>
+                </button>
+            </div>
+
+            {infoTooltip && (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4a4b53] hover:text-[#E7FE55] transition-all duration-200 cursor-help hover:scale-110 opacity-0 group-hover:opacity-100 z-50">
+                            <Info size={14} strokeWidth={2} />
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[250px] text-xs leading-relaxed bg-[#1a1b21] border-[#2a2b30] text-[#a0a1a8]">
+                        {infoTooltip}
+                    </TooltipContent>
+                </Tooltip>
+            )}
+        </div>
+        <AnimatePresence initial={false}>
+            {isExpanded && (
+                <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                >
+                    <div className="relative ml-1 pl-2 border-l border-[#2a2b30]">
+                        {children}
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    </div>
+);
+
 const StatusIndicator: React.FC<{ status: 'Online' | 'Down' | 'Checking'; label: string; latency?: string; network: 'solana' | 'hyperliquid' }> = ({
     status,
     label,
@@ -204,7 +304,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const isAnyDealerActive = isDealerActive || isPolymarketDealerActive || isSolanaDealerActive;
     
     const [isDealerExpanded, setIsDealerExpanded] = useState(isAnyDealerActive);
-    const isManagerActive = activeTab === AppTab.AGENT;
+    const [isVaultOperatorExpanded, setIsVaultOperatorExpanded] = useState(activeTab === AppTab.AGENT || activeTab === AppTab.DASHBOARD);
+    const isManagerActive = activeTab === AppTab.AGENT || activeTab === AppTab.DASHBOARD;
 
     // Auto-expand when dealer becomes active
     useEffect(() => {
@@ -212,6 +313,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             setIsDealerExpanded(true);
         }
     }, [isAnyDealerActive]);
+
+    // Auto-expand when Vault Operator becomes active
+    useEffect(() => {
+        if (isManagerActive) {
+            setIsVaultOperatorExpanded(true);
+        }
+    }, [isManagerActive]);
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -260,22 +368,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 <nav className="space-y-1 flex-1">
-                    {/* Dashboard */}
-                    <NavItem
-                        icon={<Activity size={18} />}
-                        label="Dashboard"
-                        isActive={activeTab === AppTab.DASHBOARD}
-                        onClick={() => handleNavigation(AppTab.DASHBOARD)}
-                    />
-
-                    {/* Vault Operator */}
-                    <NavItem
+                    {/* Vault Operator Group */}
+                    <NavGroupSplit
                         icon={<Bot size={18} />}
                         label="Vault Operator"
-                        isActive={isManagerActive}
-                        onClick={() => handleNavigation(AppTab.AGENT)}
-                        infoTooltip="Manual control and oversight of your vault. Execute discretionary operations, manage capital flows, and supervise the Vault Dealer."
-                    />
+                        isExpanded={isVaultOperatorExpanded}
+                        onToggle={(e) => {
+                            e.stopPropagation();
+                            setIsVaultOperatorExpanded(!isVaultOperatorExpanded);
+                        }}
+                        onNavigate={() => {
+                            handleNavigation(AppTab.AGENT);
+                            setIsVaultOperatorExpanded(!isVaultOperatorExpanded);
+                        }}
+                        isActive={activeTab === AppTab.AGENT}
+                        hasActiveChild={activeTab === AppTab.DASHBOARD}
+                        infoTooltip="Manual control and oversight of your vault. Visit Overview for metrics or chat directly with the Operator."
+                    >
+                        {/* Overview (formerly Dashboard) */}
+                        <NavItem
+                            icon={<Activity size={16} />}
+                            label="Overview"
+                            isActive={activeTab === AppTab.DASHBOARD}
+                            onClick={() => handleNavigation(AppTab.DASHBOARD)}
+                            isSubItem
+                        />
+                    </NavGroupSplit>
 
                     {/* Vault Dealer - Parent with expandable subpages */}
                     <NavGroup

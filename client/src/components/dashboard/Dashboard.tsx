@@ -192,9 +192,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <Plus size={48} />
                         </div>
                         <div className="flex items-center gap-2 mb-1">
-                            <div className="p-1.5 rounded bg-[#E7FE55]/15 text-[#E7FE55] group-hover:bg-[#E7FE55] group-hover:text-black transition-colors">
+                            <motion.div
+                                animate={{
+                                    scale: [1, 1.02, 1],
+                                    boxShadow: ["0 0 0px rgba(231, 254, 85, 0)", "0 0 8px rgba(231, 254, 85, 0.3)", "0 0 0px rgba(231, 254, 85, 0)"]
+                                }}
+                                transition={{
+                                    duration: 2,
+                                    repeat: Infinity,
+                                    ease: "easeInOut"
+                                }}
+                                className="p-1.5 rounded bg-[#E7FE55]/15 text-[#E7FE55] group-hover:bg-[#E7FE55] group-hover:text-black transition-colors"
+                            >
                                 <Plus size={16} />
-                            </div>
+                            </motion.div>
                             <h3 className="text-[#E7FE55] font-medium text-sm">New Conversation</h3>
                         </div>
                         <div className="text-[11px] text-[#747580]">

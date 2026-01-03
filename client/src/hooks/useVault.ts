@@ -436,9 +436,11 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
             await SecurityService.setSessionHash(password);
 
             addNotification('Vault unlocked');
+            return true;
         } catch (error: any) {
             console.error('Unlock failed', error);
             addNotification(error.message || 'Incorrect password or corrupted vault');
+            return false;
         }
     };
 
@@ -652,14 +654,17 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
 
     // Individual Wallet Creation Functions
     const createSolanaVault = async () => {
-        if (!solanaPassword) {
+        // Enforce single password policy: use existing main password if unlocked
+        const finalPassword = (vault.isUnlocked && password) ? password : solanaPassword;
+
+        if (!finalPassword) {
             addNotification('Password is required');
             return;
         }
         try {
             const kp = solanaService.createVaultKeypair();
             const secretKeyArray = Array.from(kp.secretKey);
-            const encrypted = await CryptoService.encrypt(JSON.stringify(secretKeyArray), solanaPassword);
+            const encrypted = await CryptoService.encrypt(JSON.stringify(secretKeyArray), finalPassword);
 
             // Save to user-scoped storage
             await StorageService.setItem(StorageService.getUserKey('agent_vault_pubkey'), kp.publicKey.toBase58());
@@ -674,6 +679,7 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
             }));
 
             setTempKeypair(kp);
+            setPassword(finalPassword); // Set session password
 
             // Show backup modal
             setBackupKey(encode(kp.secretKey));
@@ -688,13 +694,15 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
     };
 
     const createHyperliquidVault = async () => {
-        if (!hyperliquidPassword) {
+        const finalPassword = (vault.isUnlocked && password) ? password : hyperliquidPassword;
+
+        if (!finalPassword) {
             addNotification('Password is required');
             return;
         }
         try {
             const hlWallet = hyperliquidService.createVaultWallet();
-            const hlEncrypted = await CryptoService.encrypt(hlWallet.privateKey, hyperliquidPassword);
+            const hlEncrypted = await CryptoService.encrypt(hlWallet.privateKey, finalPassword);
 
             // Save to user-scoped storage
             await StorageService.setItem(StorageService.getUserKey('agent_hl_vault_pubkey'), hlWallet.address);
@@ -706,6 +714,8 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
                 hlPublicKey: hlWallet.address,
                 hlEncryptedPrivateKey: hlEncrypted
             }));
+
+            setPassword(finalPassword); // Set session password
 
             // Show backup modal
             setHLBackupKey(hlWallet.privateKey);
@@ -805,7 +815,9 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
     // ============================================
 
     const createPolymarketVault = async () => {
-        if (!polymarketPassword) {
+        const finalPassword = (vault.isUnlocked && password) ? password : polymarketPassword;
+
+        if (!finalPassword) {
             addNotification('Password is required');
             return;
         }
@@ -813,7 +825,7 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
             // Create EVM wallet for Polymarket (Polygon network)
             const { ethers } = await import('ethers');
             const wallet = ethers.Wallet.createRandom();
-            const pmEncrypted = await CryptoService.encrypt(wallet.privateKey, polymarketPassword);
+            const pmEncrypted = await CryptoService.encrypt(wallet.privateKey, finalPassword);
 
             // Save to user-scoped storage
             await StorageService.setItem(StorageService.getUserKey('agent_pm_vault_pubkey'), wallet.address);
@@ -825,6 +837,8 @@ export const useVault = (addNotification: (msg: string) => void, userId: string 
                 pmPublicKey: wallet.address,
                 pmEncryptedPrivateKey: pmEncrypted
             }));
+
+            setPassword(finalPassword); // Set session password
 
             // Show backup modal
             setPMBackupKey(wallet.privateKey);

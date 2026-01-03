@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Copy, RefreshCw, Download, Upload, Key, Lock, Unlock, Plus, Trash2, TrendingUp, ShieldCheck, BarChart2, DollarSign, ChevronLeft, PieChart } from 'lucide-react';
+import { Copy, RefreshCw, Download, Upload, Key, Lock, Unlock, Plus, Trash2, TrendingUp, ShieldCheck, BarChart2, DollarSign, ChevronLeft, PieChart, ArrowRight } from 'lucide-react';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { StatCard } from '../shared/StatCard';
 import { TOKENS, MOCK_POOL_PRICES } from '../../constants';
@@ -32,6 +32,9 @@ interface VaultProps {
     handleWithdrawPM: () => void;
     importVault: () => void;
     addNotification: (msg: string) => void;
+    showBackupModal: boolean;
+    showHLBackupModal: boolean;
+    showPMBackupModal: boolean;
     // Individual Wallet Props
     isImportingSolana: boolean;
     setIsImportingSolana: (val: boolean) => void;
@@ -60,7 +63,17 @@ interface VaultProps {
     setActiveTab: (tab: AppTab) => void;
     activeVaultTab: VaultTab;
     setActiveVaultTab: (tab: VaultTab) => void;
+    hasCompletedInitialSetup: boolean;
+    setHasCompletedInitialSetup: (completed: boolean) => void;
+    // Owner Wallet Connection (external wallets for withdrawals)
+    connectOwnerWallet: () => void;
+    disconnectOwnerWallet: () => void;
+    connectHLOwnerWallet: () => void;
+    disconnectHLOwnerWallet: () => void;
+    connectPMOwnerWallet: () => void;
+    disconnectPMOwnerWallet: () => void;
 }
+
 
 export const Vault: React.FC<VaultProps> = ({
     vault,
@@ -82,6 +95,9 @@ export const Vault: React.FC<VaultProps> = ({
     handleWithdrawPM,
     importVault,
     addNotification,
+    showBackupModal,
+    showHLBackupModal,
+    showPMBackupModal,
     isImportingSolana,
     setIsImportingSolana,
     isImportingHyperliquid,
@@ -108,9 +124,63 @@ export const Vault: React.FC<VaultProps> = ({
     importPolymarketVault,
     setActiveTab,
     activeVaultTab,
-    setActiveVaultTab
+    setActiveVaultTab,
+    hasCompletedInitialSetup,
+    setHasCompletedInitialSetup,
+    connectOwnerWallet,
+    disconnectOwnerWallet,
+    connectHLOwnerWallet,
+    disconnectHLOwnerWallet,
+    connectPMOwnerWallet,
+    disconnectPMOwnerWallet
 }) => {
     // Tab state managed by App.tsx now
+    
+    // Handle unlock and redirect
+    const handleUnlockAttempt = async () => {
+        // We need to cast the result because the prop type might return void in the interface but the implementation returns Promise<boolean>
+        // However, since we updated useVault, the actual function returns Promise<boolean>.
+        // We should treat it as such. 
+        // Note: The VaultProps interface might need updating if we were being strict, but at runtime this works.
+        // Let's assume unlockVault returns any or we await it.
+        const success = await (unlockVault as any)();
+        if (success) {
+            setActiveTab(AppTab.DASHBOARD);
+        }
+    };
+
+    // Calculate total net worth for the top bar
+    // Local state for password confirmation
+    const [confirmSolanaPass, setConfirmSolanaPass] = useState('');
+    const [confirmHyperliquidPass, setConfirmHyperliquidPass] = useState('');
+    const [confirmPolymarketPass, setConfirmPolymarketPass] = useState('');
+
+    const handleCreateSolana = () => {
+        if (!vault.isUnlocked && solanaPassword !== confirmSolanaPass) {
+            addNotification("Passwords do not match");
+            return;
+        }
+        createSolanaVault();
+        setConfirmSolanaPass('');
+    };
+
+    const handleCreateHyperliquid = () => {
+        if (!vault.isUnlocked && hyperliquidPassword !== confirmHyperliquidPass) {
+            addNotification("Passwords do not match");
+            return;
+        }
+        createHyperliquidVault();
+        setConfirmHyperliquidPass('');
+    };
+
+    const handleCreatePolymarket = () => {
+        if (!vault.isUnlocked && polymarketPassword !== confirmPolymarketPass) {
+            addNotification("Passwords do not match");
+            return;
+        }
+        createPolymarketVault();
+        setConfirmPolymarketPass('');
+    };
 
     // Calculate total net worth for the top bar
     const totalNetWorth = useMemo(() => {
@@ -677,190 +747,528 @@ export const Vault: React.FC<VaultProps> = ({
 
 
             {/* Main Content Area */}
-            {!vault.publicKey && !vault.hlPublicKey ? (
+            {/* Show configuration view if user hasn't completed initial setup OR if backup modals are open */}
+            {!hasCompletedInitialSetup || showBackupModal || showHLBackupModal || showPMBackupModal ? (
                 // --- CREATE / IMPORT VIEW - INDEPENDENT WALLETS ---
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="max-w-2xl mx-auto relative z-10 flex flex-col items-center justify-center flex-1"
+                    className="max-w-6xl mx-auto relative z-10 flex flex-col items-center justify-center flex-1 py-8"
                 >
+                    {/* Header with Icon and Title */}
                     <motion.div
                         initial={{ scale: 0.8 }}
                         animate={{ scale: 1 }}
                         transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                        className="w-20 h-20 glass-panel rounded-full flex items-center justify-center mb-6 border-[#E7FE55]/30 relative group"
+                        className="w-20 h-20 rounded-full flex items-center justify-center mb-6 border border-slate-700/50 bg-[#0f172a]/50 backdrop-blur-sm relative group"
                     >
                         <div className="absolute inset-0 bg-[#E7FE55]/5 rounded-full blur-xl group-hover:bg-[#E7FE55]/10 transition-colors" />
-                        <Lock size={32} className="text-[#E7FE55] relative z-10" />
+                        <ShieldCheck size={36} className="text-[#E7FE55] relative z-10" />
                     </motion.div>
-                    <h2 className="text-3xl font-bold text-white mb-2 text-center tracking-tight">Configure Your Vault</h2>
-                    <p className="text-[#747580] text-center mb-8 text-sm">Securely manage your assets across multiple networks.</p>
+                    
+                    <h2 className="text-4xl font-bold text-white mb-3 text-center tracking-tight">Configure Your Vault</h2>
+                    <p className="text-slate-400 text-center mb-10 text-base max-w-2xl">
+                        Set up your non-custodial wallets across multiple networks. Your keys, your control.
+                    </p>
 
-                    <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Solana Card */}
-                        <div
-                            className="glass-panel glass-panel-solana p-6 space-y-4 border-[#9b87f5]/20 transition-transform duration-200 hover:-translate-y-1"
-                        >
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="w-10 h-10 bg-[#9b87f5]/10 rounded-lg flex items-center justify-center border border-[#9b87f5]/20">
-                                    <img src={TOKENS[0].logoURI} alt="SOL" className="w-5 h-5 rounded-full" />
+                    {/* Progress Indicator */}
+                    <div className="w-full max-w-4xl mb-8 glass-panel rounded p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-[#E7FE55]/10 border border-[#E7FE55]/30 flex items-center justify-center">
+                                    <span className="text-[#E7FE55] font-bold text-sm">
+                                        {(vault.publicKey ? 1 : 0) + (vault.hlPublicKey ? 1 : 0) + (vault.pmPublicKey ? 1 : 0)}/3
+                                    </span>
                                 </div>
                                 <div>
-                                    <h3 className="text-white font-semibold">Solana</h3>
-                                    <span className="text-[10px] text-[#9b87f5] uppercase tracking-widest font-bold">Devnet</span>
+                                    <p className="text-white font-semibold text-sm">Networks Configured</p>
+                                    <p className="text-slate-500 text-xs">
+                                        {vault.publicKey || vault.hlPublicKey || vault.pmPublicKey 
+                                            ? "Add more networks or continue to app" 
+                                            : "Start by configuring at least one network"}
+                                    </p>
                                 </div>
                             </div>
-
-                            <input
-                                type="password"
-                                value={solanaPassword}
-                                onChange={(e) => setSolanaPassword(e.target.value)}
-                                className="w-full bg-[#0f1015]/50 border border-[#232328] rounded-md px-3 py-3 text-white text-sm focus:ring-1 focus:ring-[#9b87f5]/50 outline-none transition-all placeholder:text-[#747580]"
-                                placeholder="Wallet Password"
-                            />
-
-                            {isImportingSolana && (
-                                <input
-                                    type="password"
-                                    value={solanaImportKey}
-                                    onChange={(e) => setSolanaImportKey(e.target.value)}
-                                    className="w-full bg-[#0f1015]/50 border border-[#232328] rounded-md px-3 py-3 text-white text-sm focus:ring-1 focus:ring-[#9b87f5]/50 outline-none transition-all font-mono placeholder:text-[#747580]"
-                                    placeholder="Private Key (Base58)"
-                                />
-                            )}
-
                             <div className="flex gap-2">
-                                {isImportingSolana ? (
-                                    <>
-                                        <button onClick={importSolanaVault} className="flex-1 bg-[#9b87f5] hover:bg-[#a896f7] text-white font-bold py-3 rounded-md transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
-                                            <Download size={14} /> Import
-                                        </button>
-                                        <button onClick={() => setIsImportingSolana(false)} className="px-3 py-3 text-[#747580] hover:text-white text-xs font-semibold">Cancel</button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button onClick={createSolanaVault} className="flex-1 bg-[#9b87f5] hover:bg-[#a896f7] text-white font-bold py-3 rounded-md transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
-                                            <Plus size={14} /> Create
-                                        </button>
-                                        <button onClick={() => setIsImportingSolana(true)} className="flex-1 bg-[#1a1b21] hover:bg-[#232328] text-white font-bold py-3 rounded-md transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider border border-[#232328]">
-                                            <Download size={14} /> Import
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Hyperliquid Card */}
-                        <div
-                            className="glass-panel p-6 space-y-4 border-[#34d399]/20 transition-transform duration-200 hover:-translate-y-1"
-                        >
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="w-10 h-10 bg-[#34d399]/10 rounded-lg flex items-center justify-center border border-[#34d399]/20">
-                                    <TrendingUp size={20} className="text-[#34d399]" />
-                                </div>
-                                <div>
-                                    <h3 className="text-white font-semibold">Hyperliquid</h3>
-                                    <span className="text-[10px] text-[#34d399] uppercase tracking-widest font-bold">Testnet</span>
-                                </div>
-                            </div>
-
-                            <input
-                                type="password"
-                                value={hyperliquidPassword}
-                                onChange={(e) => setHyperliquidPassword(e.target.value)}
-                                className="w-full bg-[#0f1015]/50 border border-[#232328] rounded-md px-3 py-3 text-white text-sm focus:ring-1 focus:ring-[#34d399]/50 outline-none transition-all placeholder:text-[#747580]"
-                                placeholder="Wallet Password"
-                            />
-
-                            {isImportingHyperliquid && (
-                                <input
-                                    type="password"
-                                    value={hlImportKey}
-                                    onChange={(e) => setHLImportKey(e.target.value)}
-                                    className="w-full bg-[#0f1015]/50 border border-[#232328] rounded-md px-3 py-3 text-white text-sm focus:ring-1 focus:ring-[#34d399]/50 outline-none transition-all font-mono placeholder:text-[#747580]"
-                                    placeholder="Private Key (0x...)"
-                                />
-                            )}
-
-                            <div className="flex gap-2">
-                                {isImportingHyperliquid ? (
-                                    <>
-                                        <button onClick={importHyperliquidVault} className="flex-1 bg-[#34d399] hover:bg-[#4ade80] text-white font-bold py-3 rounded-md transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
-                                            <Download size={14} /> Import
-                                        </button>
-                                        <button onClick={() => setIsImportingHyperliquid(false)} className="px-3 py-3 text-[#747580] hover:text-white text-xs font-semibold">Cancel</button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button onClick={createHyperliquidVault} className="flex-1 bg-[#34d399] hover:bg-[#4ade80] text-white font-bold py-3 rounded-md transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
-                                            <Plus size={14} /> Create
-                                        </button>
-                                        <button onClick={() => setIsImportingHyperliquid(true)} className="flex-1 bg-[#1a1b21] hover:bg-[#232328] text-white font-bold py-3 rounded-md transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider border border-[#232328]">
-                                            <Download size={14} /> Import
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Polymarket Card */}
-                        <div
-                            className="glass-panel glass-panel-polymarket p-6 space-y-4 border-[#60a5fa]/20 transition-transform duration-200 hover:-translate-y-1"
-                        >
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="w-10 h-10 bg-[#60a5fa]/10 rounded-lg flex items-center justify-center border border-[#60a5fa]/20">
-                                    <BarChart2 size={20} className="text-[#60a5fa]" />
-                                </div>
-                                <div>
-                                    <h3 className="text-white font-semibold">Polymarket</h3>
-                                    <span className="text-[10px] text-[#60a5fa] uppercase tracking-widest font-bold">Polygon</span>
-                                </div>
-                            </div>
-
-                            <input
-                                type="password"
-                                value={polymarketPassword}
-                                onChange={(e) => setPolymarketPassword(e.target.value)}
-                                className="w-full bg-[#0f1015]/50 border border-[#232328] rounded-md px-3 py-3 text-white text-sm focus:ring-1 focus:ring-[#60a5fa]/50 outline-none transition-all placeholder:text-[#747580]"
-                                placeholder="Wallet Password"
-                            />
-
-                            {isImportingPolymarket && (
-                                <input
-                                    type="password"
-                                    value={pmImportKey}
-                                    onChange={(e) => setPMImportKey(e.target.value)}
-                                    className="w-full bg-[#0f1015]/50 border border-[#232328] rounded-md px-3 py-3 text-white text-sm focus:ring-1 focus:ring-[#60a5fa]/50 outline-none transition-all font-mono placeholder:text-[#747580]"
-                                    placeholder="Private Key (0x...)"
-                                />
-                            )}
-
-                            <div className="flex gap-2">
-                                {isImportingPolymarket ? (
-                                    <>
-                                        <button onClick={importPolymarketVault} className="flex-1 bg-[#60a5fa] hover:bg-[#7db4fb] text-white font-bold py-3 rounded-md transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
-                                            <Download size={14} /> Import
-                                        </button>
-                                        <button onClick={() => setIsImportingPolymarket(false)} className="px-3 py-3 text-[#747580] hover:text-white text-xs font-semibold">Cancel</button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button onClick={createPolymarketVault} className="flex-1 bg-[#60a5fa] hover:bg-[#7db4fb] text-white font-bold py-3 rounded-md transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
-                                            <Plus size={14} /> Create
-                                        </button>
-                                        <button onClick={() => setIsImportingPolymarket(true)} className="flex-1 bg-[#1a1b21] hover:bg-[#232328] text-white font-bold py-3 rounded-md transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider border border-[#232328]">
-                                            <Download size={14} /> Import
-                                        </button>
-                                    </>
-                                )}
+                                {vault.publicKey && <div className="w-2 h-2 rounded-full bg-[#9b87f5]" title="Solana" />}
+                                {vault.hlPublicKey && <div className="w-2 h-2 rounded-full bg-[#34d399]" title="Hyperliquid" />}
+                                {vault.pmPublicKey && <div className="w-2 h-2 rounded-full bg-[#60a5fa]" title="Polymarket" />}
                             </div>
                         </div>
                     </div>
 
-                    <p className="text-xs text-[#747580] mt-8 text-center max-w-sm">
-                        Wallets are stored locally and encrypted. Never share your private keys or password.
-                    </p>
+                    {/* Network Cards Grid */}
+                    <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        {/* Solana Card */}
+                        <div className={cn(
+                            "glass-panel-solana p-6 space-y-4 transition-all duration-300 rounded",
+                            vault.publicKey && "ring-2 ring-[#9b87f5]/30"
+                        )}>
+                            {/* Status Badge */}
+                            {vault.publicKey && (
+                                <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#E7FE55] flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-12 h-12 bg-[#9b87f5]/10 rounded-lg flex items-center justify-center border border-[#9b87f5]/20">
+                                    <img src={TOKENS[0].logoURI} alt="SOL" className="w-6 h-6 rounded-full" />
+                                </div>
+                                <div>
+                                    <h3 className="text-white font-bold text-lg">Solana</h3>
+                                    <span className="text-[10px] text-[#9b87f5] uppercase tracking-wider font-semibold">Devnet</span>
+                                </div>
+                            </div>
+
+                            {vault.publicKey ? (
+                                <div className="space-y-3">
+                                    <div className="bg-[#0f1015]/50 border border-slate-700/30 rounded-lg p-3">
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Vault Address</p>
+                                        <code className="text-xs text-slate-300 font-mono">
+                                            {vault.publicKey.slice(0, 8)}...{vault.publicKey.slice(-8)}
+                                        </code>
+                                    </div>
+                                    
+                                    {/* Owner Wallet Section */}
+                                    <div className="bg-[#0f1015]/50 border border-slate-700/30 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Owner Wallet</p>
+                                        </div>
+                                        {vault.ownerPublicKey ? (
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-[#E7FE55]" />
+                                                    <code className="text-xs text-slate-300 font-mono">
+                                                        {vault.ownerPublicKey.slice(0, 4)}...{vault.ownerPublicKey.slice(-4)}
+                                                    </code>
+                                                </div>
+                                                <button
+                                                    onClick={disconnectOwnerWallet}
+                                                    className="px-2 py-1 text-[10px] font-medium text-[#747580] hover:text-[#E7FE55] bg-transparent hover:bg-[#E7FE55]/10 rounded border border-[#232328] hover:border-[#E7FE55]/30 transition-colors"
+                                                >
+                                                    Disconnect
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] text-[#747580] italic">Not connected</span>
+                                                <button
+                                                    onClick={connectOwnerWallet}
+                                                    className="px-2 py-1 text-[10px] font-medium text-[#E7FE55] hover:text-[#f0ff85] bg-[#E7FE55]/10 hover:bg-[#E7FE55]/20 rounded border border-[#E7FE55]/20 transition-colors"
+                                                >
+                                                    Connect
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 text-[#9b87f5] text-sm">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span className="text-xs font-medium">Configured</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    {vault.isUnlocked ? (
+                                        <div className="bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Lock size={14} className="text-[#9b87f5]" />
+                                                <span className="text-sm text-slate-400 italic">Using main vault password</span>
+                                            </div>
+                                            <div className="w-2 h-2 rounded-full bg-[#9b87f5] animate-pulse" />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <input
+                                                type="password"
+                                                value={solanaPassword}
+                                                onChange={(e) => setSolanaPassword(e.target.value)}
+                                                className="w-full bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-[#9b87f5]/50 focus:border-[#9b87f5]/50 outline-none transition-all placeholder:text-slate-500"
+                                                placeholder="Enter password"
+                                            />
+                                            <input
+                                                type="password"
+                                                value={confirmSolanaPass}
+                                                onChange={(e) => setConfirmSolanaPass(e.target.value)}
+                                                className="w-full bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-[#9b87f5]/50 focus:border-[#9b87f5]/50 outline-none transition-all placeholder:text-slate-500"
+                                                placeholder="Confirm password"
+                                            />
+                                        </div>
+                                    )}
+                                    <p className="text-[10px] text-slate-500 text-center px-1">
+                                        For security consistency, all wallets in this vault must share the same password.
+                                    </p>
+
+                                    {isImportingSolana && (
+                                        <input
+                                            type="password"
+                                            value={solanaImportKey}
+                                            onChange={(e) => setSolanaImportKey(e.target.value)}
+                                            className="w-full bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-[#9b87f5]/50 focus:border-[#9b87f5]/50 outline-none transition-all font-mono placeholder:text-slate-500"
+                                            placeholder="Private key (Base58)"
+                                        />
+                                    )}
+
+                                    <div className="flex gap-2">
+                                        {isImportingSolana ? (
+                                            <>
+                                                <button onClick={importSolanaVault} className="flex-1 bg-[#9b87f5] hover:bg-[#a896f7] text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider shadow-lg shadow-[#9b87f5]/20">
+                                                    <Download size={16} /> Import
+                                                </button>
+                                                <button onClick={() => setIsImportingSolana(false)} className="px-4 py-3 text-slate-400 hover:text-white text-xs font-semibold transition-colors">
+                                                    Cancel
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button onClick={handleCreateSolana} className="flex-1 bg-[#9b87f5] hover:bg-[#a896f7] text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider shadow-lg shadow-[#9b87f5]/20">
+                                                    <Plus size={16} /> Create
+                                                </button>
+                                                <button onClick={() => setIsImportingSolana(true)} className="flex-1 bg-[#1a1b21] hover:bg-[#232328] text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider border border-[#232328]">
+                                                    <Download size={16} /> Import
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Hyperliquid Card */}
+                        <div className={cn(
+                            "glass-panel-hyperliquid p-6 space-y-4 transition-all duration-300 rounded",
+                            vault.hlPublicKey && "ring-2 ring-[#34d399]/30"
+                        )}>
+                            {/* Status Badge */}
+                            {vault.hlPublicKey && (
+                                <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#E7FE55] flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-12 h-12 bg-[#34d399]/10 rounded-lg flex items-center justify-center border border-[#34d399]/20">
+                                    <TrendingUp size={24} className="text-[#34d399]" />
+                                </div>
+                                <div>
+                                    <h3 className="text-white font-bold text-lg">Hyperliquid</h3>
+                                    <span className="text-[10px] text-[#34d399] uppercase tracking-wider font-semibold">Testnet</span>
+                                </div>
+                            </div>
+
+                            {vault.hlPublicKey ? (
+                                <div className="space-y-3">
+                                    <div className="bg-[#0f1015]/50 border border-slate-700/30 rounded-lg p-3">
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Vault Address</p>
+                                        <code className="text-xs text-slate-300 font-mono">
+                                            {vault.hlPublicKey.slice(0, 8)}...{vault.hlPublicKey.slice(-8)}
+                                        </code>
+                                    </div>
+                                    
+                                    {/* Owner Wallet Section */}
+                                    <div className="bg-[#0f1015]/50 border border-slate-700/30 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Owner Wallet</p>
+                                        </div>
+                                        {vault.hlOwnerPublicKey ? (
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-[#E7FE55]" />
+                                                    <code className="text-xs text-slate-300 font-mono">
+                                                        {vault.hlOwnerPublicKey.slice(0, 4)}...{vault.hlOwnerPublicKey.slice(-4)}
+                                                    </code>
+                                                </div>
+                                                <button
+                                                    onClick={disconnectHLOwnerWallet}
+                                                    className="px-2 py-1 text-[10px] font-medium text-[#747580] hover:text-[#E7FE55] bg-transparent hover:bg-[#E7FE55]/10 rounded border border-[#232328] hover:border-[#E7FE55]/30 transition-colors"
+                                                >
+                                                    Disconnect
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] text-[#747580] italic">Not connected</span>
+                                                <button
+                                                    onClick={connectHLOwnerWallet}
+                                                    className="px-2 py-1 text-[10px] font-medium text-[#E7FE55] hover:text-[#f0ff85] bg-[#E7FE55]/10 hover:bg-[#E7FE55]/20 rounded border border-[#E7FE55]/20 transition-colors"
+                                                >
+                                                    Connect
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 text-[#34d399] text-sm">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span className="text-xs font-medium">Configured</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    {vault.isUnlocked ? (
+                                        <div className="bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Lock size={14} className="text-[#34d399]" />
+                                                <span className="text-sm text-slate-400 italic">Using main vault password</span>
+                                            </div>
+                                            <div className="w-2 h-2 rounded-full bg-[#34d399] animate-pulse" />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <input
+                                                type="password"
+                                                value={hyperliquidPassword}
+                                                onChange={(e) => setHyperliquidPassword(e.target.value)}
+                                                className="w-full bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-[#34d399]/50 focus:border-[#34d399]/50 outline-none transition-all placeholder:text-slate-500"
+                                                placeholder="Enter password"
+                                            />
+                                            <input
+                                                type="password"
+                                                value={confirmHyperliquidPass}
+                                                onChange={(e) => setConfirmHyperliquidPass(e.target.value)}
+                                                className="w-full bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-[#34d399]/50 focus:border-[#34d399]/50 outline-none transition-all placeholder:text-slate-500"
+                                                placeholder="Confirm password"
+                                            />
+                                        </div>
+                                    )}
+                                    <p className="text-[10px] text-slate-500 text-center px-1">
+                                        For security consistency, all wallets in this vault must share the same password.
+                                    </p>
+
+                                    {isImportingHyperliquid && (
+                                        <input
+                                            type="password"
+                                            value={hlImportKey}
+                                            onChange={(e) => setHLImportKey(e.target.value)}
+                                            className="w-full bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-[#34d399]/50 focus:border-[#34d399]/50 outline-none transition-all font-mono placeholder:text-slate-500"
+                                            placeholder="Private key (0x...)"
+                                        />
+                                    )}
+
+                                    <div className="flex gap-2">
+                                        {isImportingHyperliquid ? (
+                                            <>
+                                                <button onClick={importHyperliquidVault} className="flex-1 bg-[#34d399] hover:bg-[#4ade80] text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider shadow-lg shadow-[#34d399]/20">
+                                                    <Download size={16} /> Import
+                                                </button>
+                                                <button onClick={() => setIsImportingHyperliquid(false)} className="px-4 py-3 text-slate-400 hover:text-white text-xs font-semibold transition-colors">
+                                                    Cancel
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button onClick={handleCreateHyperliquid} className="flex-1 bg-[#34d399] hover:bg-[#4ade80] text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider shadow-lg shadow-[#34d399]/20">
+                                                    <Plus size={16} /> Create
+                                                </button>
+                                                <button onClick={() => setIsImportingHyperliquid(true)} className="flex-1 bg-[#1a1b21] hover:bg-[#232328] text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider border border-[#232328]">
+                                                    <Download size={16} /> Import
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Polymarket Card */}
+                        <div className={cn(
+                            "glass-panel-polymarket p-6 space-y-4 transition-all duration-300 rounded",
+                            vault.pmPublicKey && "ring-2 ring-[#60a5fa]/30"
+                        )}>
+                            {/* Status Badge */}
+                            {vault.pmPublicKey && (
+                                <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#E7FE55] flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-12 h-12 bg-[#60a5fa]/10 rounded-lg flex items-center justify-center border border-[#60a5fa]/20">
+                                    <BarChart2 size={24} className="text-[#60a5fa]" />
+                                </div>
+                                <div>
+                                    <h3 className="text-white font-bold text-lg">Polymarket</h3>
+                                    <span className="text-[10px] text-[#60a5fa] uppercase tracking-wider font-semibold">Polygon</span>
+                                </div>
+                            </div>
+
+                            {vault.pmPublicKey ? (
+                                <div className="space-y-3">
+                                    <div className="bg-[#0f1015]/50 border border-slate-700/30 rounded-lg p-3">
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Vault Address</p>
+                                        <code className="text-xs text-slate-300 font-mono">
+                                            {vault.pmPublicKey.slice(0, 8)}...{vault.pmPublicKey.slice(-8)}
+                                        </code>
+                                    </div>
+                                    
+                                    {/* Owner Wallet Section */}
+                                    <div className="bg-[#0f1015]/50 border border-slate-700/30 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Owner Wallet</p>
+                                        </div>
+                                        {vault.pmOwnerPublicKey ? (
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-[#E7FE55]" />
+                                                    <code className="text-xs text-slate-300 font-mono">
+                                                        {vault.pmOwnerPublicKey.slice(0, 4)}...{vault.pmOwnerPublicKey.slice(-4)}
+                                                    </code>
+                                                </div>
+                                                <button
+                                                    onClick={disconnectPMOwnerWallet}
+                                                    className="px-2 py-1 text-[10px] font-medium text-[#747580] hover:text-[#E7FE55] bg-transparent hover:bg-[#E7FE55]/10 rounded border border-[#232328] hover:border-[#E7FE55]/30 transition-colors"
+                                                >
+                                                    Disconnect
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] text-[#747580] italic">Not connected</span>
+                                                <button
+                                                    onClick={connectPMOwnerWallet}
+                                                    className="px-2 py-1 text-[10px] font-medium text-[#E7FE55] hover:text-[#f0ff85] bg-[#E7FE55]/10 hover:bg-[#E7FE55]/20 rounded border border-[#E7FE55]/20 transition-colors"
+                                                >
+                                                    Connect
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 text-[#60a5fa] text-sm">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span className="text-xs font-medium">Configured</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    {vault.isUnlocked ? (
+                                        <div className="bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Lock size={14} className="text-[#60a5fa]" />
+                                                <span className="text-sm text-slate-400 italic">Using main vault password</span>
+                                            </div>
+                                            <div className="w-2 h-2 rounded-full bg-[#60a5fa] animate-pulse" />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <input
+                                                type="password"
+                                                value={polymarketPassword}
+                                                onChange={(e) => setPolymarketPassword(e.target.value)}
+                                                className="w-full bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-[#60a5fa]/50 focus:border-[#60a5fa]/50 outline-none transition-all placeholder:text-slate-500"
+                                                placeholder="Enter password"
+                                            />
+                                            <input
+                                                type="password"
+                                                value={confirmPolymarketPass}
+                                                onChange={(e) => setConfirmPolymarketPass(e.target.value)}
+                                                className="w-full bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-[#60a5fa]/50 focus:border-[#60a5fa]/50 outline-none transition-all placeholder:text-slate-500"
+                                                placeholder="Confirm password"
+                                            />
+                                        </div>
+                                    )}
+                                    <p className="text-[10px] text-slate-500 text-center px-1">
+                                        For security consistency, all wallets in this vault must share the same password.
+                                    </p>
+
+                                    {isImportingPolymarket && (
+                                        <input
+                                            type="password"
+                                            value={pmImportKey}
+                                            onChange={(e) => setPMImportKey(e.target.value)}
+                                            className="w-full bg-[#0f1015]/80 border border-[#232328] rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-[#60a5fa]/50 focus:border-[#60a5fa]/50 outline-none transition-all font-mono placeholder:text-slate-500"
+                                            placeholder="Private key (0x...)"
+                                        />
+                                    )}
+
+                                    <div className="flex gap-2">
+                                        {isImportingPolymarket ? (
+                                            <>
+                                                <button onClick={importPolymarketVault} className="flex-1 bg-[#60a5fa] hover:bg-[#7db4fb] text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider shadow-lg shadow-[#60a5fa]/20">
+                                                    <Download size={16} /> Import
+                                                </button>
+                                                <button onClick={() => setIsImportingPolymarket(false)} className="px-4 py-3 text-slate-400 hover:text-white text-xs font-semibold transition-colors">
+                                                    Cancel
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button onClick={handleCreatePolymarket} className="flex-1 bg-[#60a5fa] hover:bg-[#7db4fb] text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider shadow-lg shadow-[#60a5fa]/20">
+                                                    <Plus size={16} /> Create
+                                                </button>
+                                                <button onClick={() => setIsImportingPolymarket(true)} className="flex-1 bg-[#1a1b21] hover:bg-[#232328] text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider border border-[#232328]">
+                                                    <Download size={16} /> Import
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Footer Section */}
+                    <div className="w-full max-w-4xl space-y-4">
+                        {/* Go to App Button - Only show when at least one wallet is configured */}
+                        {(vault.publicKey || vault.hlPublicKey || vault.pmPublicKey) && (
+                            <motion.button
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                onClick={() => {
+                                    setHasCompletedInitialSetup(true);
+                                    setActiveTab(AppTab.AGENT);
+                                }}
+                                className="w-full bg-[#E7FE55] hover:brightness-110 active:scale-[0.98] text-black font-bold py-4 rounded transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-widest shadow-xl shadow-[#E7FE55]/20"
+                            >
+                                <ArrowRight size={20} />
+                                Go to App
+                            </motion.button>
+                        )}
+
+                        {/* Owner Wallet Disclaimer */}
+                        <div className="glass-panel p-4 border border-[#E7FE55]/20 bg-gradient-to-br from-[#E7FE55]/5 to-transparent">
+                            <div className="flex items-start gap-3">
+                                <div className="w-6 h-6 rounded-lg bg-[#E7FE55]/10 border border-[#E7FE55]/30 flex items-center justify-center flex-shrink-0">
+                                    <Key size={14} className="text-[#E7FE55]" />
+                                </div>
+                                <p className="text-slate-400 text-xs leading-relaxed">
+                                    <span className="text-white font-semibold">Only the connected Owner Wallet</span> can receive automated withdrawals from the vault. Connect your external wallet (Phantom/MetaMask) after creating the vault.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        {/* Security Notice */}
+                        <div className="bg-amber-500/5 border border-amber-500/20 rounded p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg className="w-3 h-3 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-amber-200 font-semibold text-sm mb-1">Security Notice</p>
+                                    <p className="text-amber-200/70 text-xs leading-relaxed">
+                                        Your wallets are encrypted and stored locally on your device. Never share your private keys or passwords with anyone. You are solely responsible for keeping your credentials secure.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </motion.div>
             ) : !vault.isUnlocked ? (
                 // --- LOCKED VIEW ---
@@ -897,12 +1305,12 @@ export const Vault: React.FC<VaultProps> = ({
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full bg-[#0f1015]/80 border border-[#232328] rounded-md px-4 py-4 text-white focus:ring-1 focus:ring-[#E7FE55]/50 outline-none transition-all placeholder:text-[#333540] text-lg font-mono"
                                 placeholder="••••••••"
-                                onKeyDown={(e) => e.key === 'Enter' && unlockVault()}
+                                onKeyDown={(e) => e.key === 'Enter' && handleUnlockAttempt()}
                             />
                         </div>
 
                         <button
-                            onClick={unlockVault}
+                            onClick={handleUnlockAttempt}
                             className="w-full bg-[#E7FE55] hover:brightness-110 active:scale-[0.98] text-black font-bold py-4 rounded-md transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest"
                         >
                             <Unlock size={18} /> Unlock Vault
