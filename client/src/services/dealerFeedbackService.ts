@@ -4,6 +4,7 @@ import { dealerStore } from '../state/dealerStore';
 
 // Key for IndexedDB
 const FEEDBACK_STORAGE_KEY = 'dealer_feedbacks';
+const MAX_ACTIVE_FEEDBACKS = 5;
 
 class DealerFeedbackService {
     
@@ -20,7 +21,6 @@ class DealerFeedbackService {
     }): Promise<DealerFeedback> {
         const id = crypto.randomUUID();
         const timestamp = Date.now();
-        const expiresAt = timestamp + (24 * 60 * 60 * 1000); // 24 hours from now
 
         // Create condensed summary for AI
         const contextSummary = this.generateContextSummary(payload.context);
@@ -46,8 +46,7 @@ class DealerFeedbackService {
             comment: payload.comment?.slice(0, 100), // Enforce limit
             contextSummary,
             indicatorSnapshot,
-            timestamp,
-            expiresAt
+            timestamp
         };
 
         // Save to storage
@@ -58,7 +57,7 @@ class DealerFeedbackService {
     }
 
     /**
-     * Get all active (non-expired) feedbacks
+     * Get all active feedbacks (limited to MAX_ACTIVE_FEEDBACKS)
      */
     async getActiveFeedbacks(): Promise<DealerFeedback[]> {
         const rawData = await StorageService.getItem(StorageService.getUserKey(FEEDBACK_STORAGE_KEY));
@@ -66,20 +65,7 @@ class DealerFeedbackService {
 
         try {
             const allFeedbacks: DealerFeedback[] = JSON.parse(rawData);
-            const now = Date.now();
-            
-            // Filter expired
-            const active = allFeedbacks.filter(f => f.expiresAt > now);
-            
-            // If we filtered out expired items, update storage to clean up
-            if (active.length < allFeedbacks.length) {
-                await StorageService.setItem(
-                    StorageService.getUserKey(FEEDBACK_STORAGE_KEY), 
-                    JSON.stringify(active)
-                );
-            }
-            
-            return active.sort((a, b) => b.timestamp - a.timestamp); // Newest first
+            return allFeedbacks.sort((a, b) => b.timestamp - a.timestamp); // Newest first
         } catch (e) {
             console.error('[DealerFeedback] Failed to parse feedbacks:', e);
             return [];
@@ -113,9 +99,9 @@ class DealerFeedbackService {
         if (feedbacks.length === 0) return "";
 
         // Take top 5 most recent feedbacks
-        const recent = feedbacks.slice(0, 5);
+        const recent = feedbacks.slice(0, MAX_ACTIVE_FEEDBACKS);
         
-        let contextString = "### USER FEEDBACK (LAST 24H) - LEARN FROM THIS:\n";
+        let contextString = "### USER FEEDBACK - LEARN FROM THIS:\n";
         
         for (const f of recent) {
             const timeAgo = Math.round((Date.now() - f.timestamp) / (1000 * 60 * 60));
@@ -135,7 +121,8 @@ class DealerFeedbackService {
 
     private async saveFeedback(feedback: DealerFeedback): Promise<void> {
         const existing = await this.getActiveFeedbacks();
-        const updated = [feedback, ...existing];
+        // Add new feedback at start, keep only MAX_ACTIVE_FEEDBACKS (FIFO)
+        const updated = [feedback, ...existing].slice(0, MAX_ACTIVE_FEEDBACKS);
         await StorageService.setItem(
             StorageService.getUserKey(FEEDBACK_STORAGE_KEY), 
             JSON.stringify(updated)

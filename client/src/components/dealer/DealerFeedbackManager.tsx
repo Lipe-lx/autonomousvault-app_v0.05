@@ -31,7 +31,7 @@ export const DealerFeedbackManager: React.FC<DealerFeedbackManagerProps> = ({ on
     };
 
     const handleClearAll = async () => {
-        if (confirm('Clear all 24h feedback history? This will reset custom AI bias.')) {
+        if (confirm('Clear all feedback history? This will reset AI bias adjustments.')) {
             await dealerFeedbackService.clearAllFeedbacks();
             await loadFeedbacks();
         }
@@ -121,7 +121,7 @@ export const DealerFeedbackManager: React.FC<DealerFeedbackManagerProps> = ({ on
 
                                 <div className="flex items-center gap-1 text-[9px] text-[#505158] font-mono mt-1">
                                     <Clock className="h-2.5 w-2.5" />
-                                    Exp: {new Date(item.expiresAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    {new Date(item.timestamp).toLocaleDateString([], {day: '2-digit', month: 'short'})} {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                 </div>
                             </motion.div>
                         ))}
@@ -129,8 +129,8 @@ export const DealerFeedbackManager: React.FC<DealerFeedbackManagerProps> = ({ on
                 )}
             </div>
             
-            <div className="p-3 bg-[#1a1b21] border-t border-[#232328] text-[10px] text-[#505158] text-center">
-                Reviews expire automatically after 24h
+            <div className="p-3 bg-[#1a1b21] border-t border-[#232328] text-[11px] text-[#505158] text-center">
+                Max 5 active reviews
             </div>
         </div>
     );

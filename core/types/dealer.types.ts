@@ -167,5 +167,5 @@ export interface DealerFeedback {
     contextSummary: string;     // Condensed context for AI
     indicatorSnapshot: Record<string, number>;
     timestamp: number;
-    expiresAt: number;          // 24h decay
+    expiresAt?: number;         // Legacy field, no longer used
 }

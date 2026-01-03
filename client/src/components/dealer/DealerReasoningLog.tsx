@@ -130,31 +130,31 @@ export const DealerReasoningLog: React.FC<DealerReasoningLogProps> = ({ logs, on
                                         <div className="flex items-center gap-3">
                                             {/* Feedback Buttons (Only for REASONING) */}
                                             {isReasoning && (
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex items-center gap-1 transition-opacity">
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); handleFeedbackClick(log, 'AGREE'); }}
-                                                        className="p-1 hover:bg-[#34d399]/20 rounded text-[#34d399]/50 hover:text-[#34d399] transition-colors"
+                                                        className="p-1 hover:bg-[#34d399]/20 rounded text-[#747580] hover:text-[#34d399] transition-colors"
                                                         title="Good Decision"
                                                     >
                                                         <ThumbsUp size={12} />
                                                     </button>
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); handleFeedbackClick(log, 'TOO_BULLISH'); }}
-                                                        className="p-1 hover:bg-yellow-400/20 rounded text-yellow-400/50 hover:text-yellow-400 transition-colors"
+                                                        className="p-1 hover:bg-yellow-400/20 rounded text-[#747580] hover:text-yellow-400 transition-colors"
                                                         title="Too Bullish/Bearish"
                                                     >
                                                         <Activity size={12} />
                                                     </button>
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); handleFeedbackClick(log, 'BAD_TIMING'); }}
-                                                        className="p-1 hover:bg-blue-400/20 rounded text-blue-400/50 hover:text-blue-400 transition-colors"
+                                                        className="p-1 hover:bg-blue-400/20 rounded text-[#747580] hover:text-blue-400 transition-colors"
                                                         title="Bad Timing"
                                                     >
                                                         <Clock size={12} />
                                                     </button>
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); handleFeedbackClick(log, 'WRONG_COIN'); }}
-                                                        className="p-1 hover:bg-red-400/20 rounded text-red-400/50 hover:text-red-400 transition-colors"
+                                                        className="p-1 hover:bg-red-400/20 rounded text-[#747580] hover:text-red-400 transition-colors"
                                                         title="Wrong Coin"
                                                     >
                                                         <ThumbsDown size={12} />
