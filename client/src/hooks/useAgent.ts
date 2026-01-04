@@ -601,6 +601,30 @@ ${recentFills.map((f: any) => {
           - Take Profit (optional, ask if user wants)
           - Condition details (indicator, symbol, operator, value, timeframe)
           
+          **PRICE CONDITION SCHEDULING (CRITICAL):**
+          - "Buy when price hits X" = CONDITION based on price, NOT a limit order
+          - "Alert if price drops to X" = CONDITION based on price
+          - In these cases, use:
+            * conditionIndicator: "price"
+            * conditionSymbol: [the symbol]
+            * conditionOperator: ">=" (if hits from below) or "<=" (if drops to)
+            * conditionValue: [the price X]
+            * conditionTimeframe: "1m" (default for price triggers if not specified)
+          
+          - Example: "Buy BTC on HL when price hits 95k"
+          * You call: scheduleTask(
+            taskType="HL_ORDER",
+            coin="BTC",
+            isBuy=true,
+            size=[ask or default],
+            orderType="market",
+            conditionIndicator="price",
+            conditionSymbol="BTC",
+            conditionOperator=">=",
+            conditionValue=95000,
+            conditionTimeframe="1m"
+          )
+
           **SUPPORTED PARAMETERS:**
           - taskType: "SWAP", "TRANSFER", "ALERT", or "HL_ORDER"
           - For SWAP: inputToken, outputToken, amount
