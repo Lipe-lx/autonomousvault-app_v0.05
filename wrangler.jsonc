@@ -1,5 +1,5 @@
 {
-  "name": "autonomousvault-app",
+  "name": "autonomousvault-app-v005",
   "compatibility_date": "2025-12-29",
   "assets": {
     "directory": "./client/dist"
