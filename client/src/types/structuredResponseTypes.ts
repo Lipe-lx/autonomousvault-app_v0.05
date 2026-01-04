@@ -20,7 +20,13 @@ export type CardType =
   | 'volatility'  // Volatility data
   | 'list'        // Generic list of items
   | 'error'       // Error state
-  | 'hl-thinking'; // Hyperliquid Dealer AI thinking
+  | 'hl-thinking' // Hyperliquid Dealer AI thinking
+  | 'market-price' // Market price from exchanges
+  | 'ohlcv'        // OHLCV candlestick data
+  | 'indicator'    // Technical indicator
+  | 'trading-summary' // TradingView summary
+  | 'scheduler'   // Scheduled task
+  | 'dealer-history'; // Dealer trade history
 
 // Action that can be performed from a card
 export interface CardAction {
@@ -161,6 +167,66 @@ export interface HLThinkingItem extends BaseItem {
   assetsAnalyzed: string[];
 }
 
+// Market Price item (from Hyperliquid, Binance, etc.)
+export interface MarketPriceItem extends BaseItem {
+  type: 'market-price';
+  symbol: string;
+  price: number;
+  exchange: string; // 'hyperliquid' | 'binance' | etc
+  change24h?: number;
+  change24hPercent?: number;
+  bid?: number;  // Best bid price (for orderbook data)
+  ask?: number;  // Best ask price (for orderbook data)
+}
+
+// OHLCV candle data item
+export interface OHLCVItem extends BaseItem {
+  type: 'ohlcv';
+  symbol: string;
+  timeframe: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  timestamp?: number;
+}
+
+// Technical indicator item
+export interface IndicatorItem extends BaseItem {
+  type: 'indicator';
+  symbol: string;
+  indicator: string; // RSI, MACD, EMA, etc.
+  timeframe: string;
+  value: number | Record<string, number>;
+}
+
+// TradingView summary item
+export interface TradingViewSummaryItem extends BaseItem {
+  type: 'trading-summary';
+  symbol: string;
+  recommendation: string; // BUY, SELL, NEUTRAL, STRONG_BUY, STRONG_SELL
+  buy: number;
+  sell: number;
+  neutral: number;
+}
+
+// Scheduled task item
+export interface SchedulerItem extends BaseItem {
+  type: 'scheduler';
+  taskType: string; // SWAP, TRANSFER, ALERT, HL_ORDER
+  taskId: string;
+  executeAt?: number;
+  condition?: {
+    symbol: string;
+    indicator: string;
+    operator: string;
+    value: number;
+    timeframe: string;
+  };
+  status: 'active' | 'pending' | 'executed';
+}
+
 // Union of all structured items
 export type StructuredItem = 
   | PoolItem 
@@ -168,7 +234,38 @@ export type StructuredItem =
   | TransactionItem 
   | PositionItem 
   | VolatilityItem
-  | HLThinkingItem;
+  | HLThinkingItem
+  | MarketPriceItem
+  | OHLCVItem
+  | IndicatorItem
+  | TradingViewSummaryItem
+  | SchedulerItem
+  | DealerHistoryItem;
+
+export interface DealerHistoryOperation {
+  id: string;
+  coin: string;
+  action: 'BUY' | 'SELL' | 'CLOSE';
+  timestamp: number;
+  price: number;
+  size: number;
+  pnl?: number;
+  confidence: number;
+  reasoning?: string;
+}
+
+export interface DealerHistoryLog {
+  timestamp: number;
+  message: string;
+  type: string;
+}
+
+export interface DealerHistoryItem extends BaseItem {
+  type: 'dealer-history';
+  operations: DealerHistoryOperation[];
+  recentLogs: DealerHistoryLog[];
+  totalOperations: number;
+}
 
 // Main structured result container
 export interface StructuredResult {
@@ -223,6 +320,46 @@ export const PROTOCOL_INFO: Record<ProtocolId, {
     color: '#2563EB',
     bgColor: 'rgba(37, 99, 235, 0.15)',
     borderColor: 'rgba(37, 99, 235, 0.3)'
+  }
+};
+
+// Exchange display info for market price badges
+export type ExchangeId = 'hyperliquid' | 'binance' | 'tradingview' | 'unknown';
+
+export const EXCHANGE_INFO: Record<ExchangeId, {
+  label: string;
+  shortLabel: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+}> = {
+  hyperliquid: {
+    label: 'Hyperliquid',
+    shortLabel: 'HL',
+    color: '#E7FE55',
+    bgColor: 'rgba(231, 254, 85, 0.15)',
+    borderColor: 'rgba(231, 254, 85, 0.3)'
+  },
+  binance: {
+    label: 'Binance',
+    shortLabel: 'BIN',
+    color: '#F0B90B',
+    bgColor: 'rgba(240, 185, 11, 0.15)',
+    borderColor: 'rgba(240, 185, 11, 0.3)'
+  },
+  tradingview: {
+    label: 'TradingView',
+    shortLabel: 'TV',
+    color: '#2962FF',
+    bgColor: 'rgba(41, 98, 255, 0.15)',
+    borderColor: 'rgba(41, 98, 255, 0.3)'
+  },
+  unknown: {
+    label: 'Exchange',
+    shortLabel: 'EX',
+    color: '#747580',
+    bgColor: 'rgba(116, 117, 128, 0.15)',
+    borderColor: 'rgba(116, 117, 128, 0.3)'
   }
 };
 

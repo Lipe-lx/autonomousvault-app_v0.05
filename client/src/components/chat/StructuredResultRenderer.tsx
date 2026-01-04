@@ -6,7 +6,13 @@ import {
   TransactionItem, 
   VolatilityItem,
   PositionItem,
-  HLThinkingItem
+  HLThinkingItem,
+  MarketPriceItem,
+  OHLCVItem,
+  IndicatorItem,
+  TradingViewSummaryItem,
+  SchedulerItem,
+  DealerHistoryItem
 } from '../../types/structuredResponseTypes';
 import { PoolCard } from './PoolCard';
 import { BalanceCard, BalanceGrid } from './BalanceCard';
@@ -15,6 +21,12 @@ import { VolatilityCard } from './VolatilityCard';
 import { PositionCard } from './PositionCard';
 import { HLThinkingCard } from './HLThinkingCard';
 import { CardGrid } from './CardGrid';
+import { MarketPriceCard } from './MarketPriceCard';
+import { OHLCVCard } from './OHLCVCard';
+import { IndicatorCard } from './IndicatorCard';
+import { TradingSummaryCard } from './TradingSummaryCard';
+import { SchedulerCard } from './SchedulerCard';
+import { DealerHistoryCard } from './DealerHistoryCard';
 
 interface StructuredResultRendererProps {
   data: StructuredResult;
@@ -260,6 +272,110 @@ export const StructuredResultRenderer: React.FC<StructuredResultRendererProps> =
               <HLThinkingCard key={item.cycleTimestamp || idx} data={item} index={idx} />
             ))}
           </div>
+        </div>
+      );
+    }
+
+    case 'market-price': {
+      const priceItems = data.items.filter(
+        (item): item is MarketPriceItem => item.type === 'market-price'
+      );
+      if (priceItems.length === 0) return null;
+      
+      return (
+        <div>
+          {renderSummary()}
+          <div className="space-y-3">
+            {priceItems.map((item, idx) => (
+              <MarketPriceCard key={`${item.symbol}-${item.exchange}-${idx}`} data={item} index={idx} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case 'ohlcv': {
+      const ohlcvItems = data.items.filter(
+        (item): item is OHLCVItem => item.type === 'ohlcv'
+      );
+      if (ohlcvItems.length === 0) return null;
+      
+      return (
+        <div>
+          {renderSummary()}
+          <div className="space-y-3">
+            {ohlcvItems.map((item, idx) => (
+              <OHLCVCard key={`${item.symbol}-${item.timeframe}-${idx}`} data={item} index={idx} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case 'indicator': {
+      const indicatorItems = data.items.filter(
+        (item): item is IndicatorItem => item.type === 'indicator'
+      );
+      if (indicatorItems.length === 0) return null;
+      
+      return (
+        <div>
+          {renderSummary()}
+          <div className="space-y-3">
+            {indicatorItems.map((item, idx) => (
+              <IndicatorCard key={`${item.symbol}-${item.indicator}-${idx}`} data={item} index={idx} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case 'trading-summary': {
+      const summaryItems = data.items.filter(
+        (item): item is TradingViewSummaryItem => item.type === 'trading-summary'
+      );
+      if (summaryItems.length === 0) return null;
+      
+      return (
+        <div>
+          {renderSummary()}
+          <div className="space-y-3">
+            {summaryItems.map((item, idx) => (
+              <TradingSummaryCard key={`${item.symbol}-${idx}`} data={item} index={idx} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case 'scheduler': {
+      const schedulerItems = data.items.filter(
+        (item): item is SchedulerItem => item.type === 'scheduler'
+      );
+      if (schedulerItems.length === 0) return null;
+      
+      return (
+        <div>
+          {renderSummary()}
+          <div className="space-y-3">
+            {schedulerItems.map((item, idx) => (
+              <SchedulerCard key={item.taskId || idx} data={item} index={idx} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case 'dealer-history': {
+      const historyItems = data.items.filter(
+        (item): item is DealerHistoryItem => item.type === 'dealer-history'
+      );
+      if (historyItems.length === 0) return null;
+
+      return (
+        <div>
+           {renderSummary()}
+           <DealerHistoryCard data={historyItems[0]} className="animate-in fade-in slide-in-from-bottom-4 duration-500" />
         </div>
       );
     }

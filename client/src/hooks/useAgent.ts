@@ -18,7 +18,12 @@ import {
     TransactionItem,
     PositionItem,
     NetworkId,
-    HLThinkingItem
+    HLThinkingItem,
+    MarketPriceItem,
+    OHLCVItem,
+    IndicatorItem,
+    TradingViewSummaryItem,
+    SchedulerItem
 } from '../types/structuredResponseTypes';
 import { cycleSummaryStore } from '../state/cycleSummaryStore';
 
@@ -1154,10 +1159,31 @@ ${recentFills.map((f: any) => {
                                 confirmMsg = `${args.taskType} scheduled to execute in ${delaySeconds} seconds`;
                             }
 
+                            // Build structured data for card rendering
+                            const schedulerItem: SchedulerItem = {
+                                type: 'scheduler',
+                                taskType: args.taskType,
+                                taskId: newTask.id,
+                                executeAt: executeAt,
+                                condition: condition ? {
+                                    symbol: condition.symbol,
+                                    indicator: condition.indicator,
+                                    operator: condition.operator,
+                                    value: condition.value,
+                                    timeframe: condition.timeframe
+                                } : undefined,
+                                status: 'active'
+                            };
+
                             toolResults.push({
                                 type: 'info',
                                 title: 'Task Scheduled',
-                                details: confirmMsg
+                                details: confirmMsg,
+                                structuredData: {
+                                    resultType: 'scheduler',
+                                    items: [schedulerItem],
+                                    title: 'Task Scheduled'
+                                }
                             });
 
                         } catch (err: any) {
@@ -1172,10 +1198,23 @@ ${recentFills.map((f: any) => {
                         try {
                             setAiStatus('Fetching Market Price...');
                             const data = await marketDataMCP.getMarketPrice(args.symbol);
+                            
+                            const priceItem: MarketPriceItem = {
+                                type: 'market-price',
+                                symbol: args.symbol,
+                                price: data.price,
+                                exchange: data.exchange?.toLowerCase() || 'unknown'
+                            };
+                            
                             toolResults.push({
                                 type: 'success',
                                 title: 'Market Price',
-                                details: `${args.symbol}: ${data.price} (${data.exchange})`
+                                details: `${args.symbol}: ${data.price} (${data.exchange})`,
+                                structuredData: {
+                                    resultType: 'market-price',
+                                    items: [priceItem],
+                                    title: 'Market Price'
+                                }
                             });
                         } catch (err: any) {
                             toolResults.push({ type: 'error', title: 'Market Data Error', details: err.message });
@@ -1184,10 +1223,27 @@ ${recentFills.map((f: any) => {
                         try {
                             setAiStatus('Fetching OHLCV Data...');
                             const data = await marketDataMCP.getOHLCV(args.symbol, args.timeframe);
+                            
+                            const ohlcvItem: OHLCVItem = {
+                                type: 'ohlcv',
+                                symbol: args.symbol,
+                                timeframe: args.timeframe || '60',
+                                open: data.open,
+                                high: data.high,
+                                low: data.low,
+                                close: data.close,
+                                volume: data.volume
+                            };
+                            
                             toolResults.push({
                                 type: 'success',
                                 title: 'OHLCV Data',
-                                details: `${args.symbol} [${args.timeframe || '60'}]: O:${data.open} H:${data.high} L:${data.low} C:${data.close} V:${data.volume}`
+                                details: `${args.symbol} [${args.timeframe || '60'}]: O:${data.open} H:${data.high} L:${data.low} C:${data.close} V:${data.volume}`,
+                                structuredData: {
+                                    resultType: 'ohlcv',
+                                    items: [ohlcvItem],
+                                    title: 'OHLCV Data'
+                                }
                             });
                         } catch (err: any) {
                             toolResults.push({ type: 'error', title: 'OHLCV Error', details: err.message });
@@ -1200,10 +1256,24 @@ ${recentFills.map((f: any) => {
                             if (typeof data.value === 'object' && data.value !== null) {
                                 valueDisplay = JSON.stringify(data.value, null, 2);
                             }
+                            
+                            const indicatorItem: IndicatorItem = {
+                                type: 'indicator',
+                                symbol: args.symbol,
+                                indicator: data.indicator || args.indicator,
+                                timeframe: args.timeframe || '60',
+                                value: typeof data.value === 'object' ? data.value : parseFloat(data.value)
+                            };
+                            
                             toolResults.push({
                                 type: 'success',
                                 title: 'Technical Indicator',
-                                details: `${args.symbol} ${data.indicator.toUpperCase()}: ${valueDisplay}`
+                                details: `${args.symbol} ${data.indicator.toUpperCase()}: ${valueDisplay}`,
+                                structuredData: {
+                                    resultType: 'indicator',
+                                    items: [indicatorItem],
+                                    title: `${args.indicator.toUpperCase()} Indicator`
+                                }
                             });
                         } catch (err: any) {
                             toolResults.push({ type: 'error', title: 'Indicator Error', details: err.message });
@@ -1212,10 +1282,25 @@ ${recentFills.map((f: any) => {
                         try {
                             setAiStatus('Fetching TradingView Summary...');
                             const data = await marketDataMCP.getTradingViewSummary(args.symbol);
+                            
+                            const summaryItem: TradingViewSummaryItem = {
+                                type: 'trading-summary',
+                                symbol: args.symbol,
+                                recommendation: data.recommendation,
+                                buy: data.buy || 0,
+                                sell: data.sell || 0,
+                                neutral: data.neutral || 0
+                            };
+                            
                             toolResults.push({
                                 type: 'success',
                                 title: 'TradingView Summary',
-                                details: `${args.symbol}: ${data.recommendation} (Buy:${data.buy} Sell:${data.sell} Neutral:${data.neutral})`
+                                details: `${args.symbol}: ${data.recommendation} (Buy:${data.buy} Sell:${data.sell} Neutral:${data.neutral})`,
+                                structuredData: {
+                                    resultType: 'trading-summary',
+                                    items: [summaryItem],
+                                    title: 'TradingView Analysis'
+                                }
                             });
                         } catch (err: any) {
                             toolResults.push({ type: 'error', title: 'Summary Error', details: err.message });
@@ -1302,12 +1387,28 @@ ${recentFills.map((f: any) => {
                             const data = await hyperliquidMCP.getMarketData(args.coin);
                             // L2 Book structure: { levels: [[px, sz, n], ...], ... }
                             // We just want a summary
-                            const bestBid = data.levels[0][0].px;
-                            const bestAsk = data.levels[1][0].px;
+                            const bestBid = parseFloat(data.levels[0][0].px);
+                            const bestAsk = parseFloat(data.levels[1][0].px);
+                            const midPrice = (bestBid + bestAsk) / 2;
+                            
+                            const priceItem: MarketPriceItem = {
+                                type: 'market-price',
+                                symbol: args.coin,
+                                price: midPrice,
+                                exchange: 'hyperliquid',
+                                bid: bestBid,
+                                ask: bestAsk
+                            };
+                            
                             toolResults.push({
                                 type: 'success',
                                 title: `Hyperliquid ${args.coin}`,
-                                details: `Best Bid: ${bestBid}\nBest Ask: ${bestAsk}`
+                                details: `Best Bid: ${bestBid}\nBest Ask: ${bestAsk}`,
+                                structuredData: {
+                                    resultType: 'market-price',
+                                    items: [priceItem],
+                                    title: `${args.coin} Orderbook`
+                                }
                             });
                         } catch (err: any) {
                             toolResults.push({ type: 'error', title: 'HL Market Data Error', details: err.message });
@@ -1836,53 +1937,67 @@ ${recentFills.map((f: any) => {
                                 let emptyMessage = '';
 
                                 if (coin) {
-                                    emptyMessage = `Não há histórico de operações em ${coin}. O Dealer não executou trades nessa moeda.`;
+                                    emptyMessage = `No trading history for ${coin}. The Dealer has not executed any trades on this coin.`;
                                 } else if (currentState.logs.length === 0) {
                                     // Logs also empty = likely cleared or never used
-                                    emptyMessage = 'Sem histórico disponível. O Dealer ainda não executou nenhum trade ou o histórico foi limpo.';
+                                    emptyMessage = 'No history available. The Dealer has not executed any trades yet or the history was cleared.';
                                 } else {
                                     // Has logs but no operations = analyzed but didn't trade
-                                    emptyMessage = 'O Dealer analisou o mercado mas não executou nenhum trade ainda. Os sinais recebidos não atingiram o nível de confiança necessário.';
+                                    emptyMessage = 'The Dealer analyzed the market but has not executed any trades yet. The signals received did not meet the required confidence level.';
                                 }
 
                                 toolResults.push({
                                     type: 'success',
                                     title: 'Dealer History',
-                                    details: emptyMessage
+                                    details: emptyMessage,
+                                    structuredData: {
+                                        resultType: 'dealer-history',
+                                        items: [{
+                                            type: 'dealer-history',
+                                            totalOperations: 0,
+                                            operations: [],
+                                            recentLogs: history.recentLogs
+                                        }],
+                                        title: 'Dealer Trade History'
+                                    }
                                 });
                             } else {
                                 let details = '';
 
-                                // Format operations
+                                // Format operations (keep markdown details for compatibility/fallback)
                                 if (history.operations.length > 0) {
                                     details += `📊 **TRADE OPERATIONS** (${history.totalOperations} total)\n\n`;
-                                    history.operations.forEach((op: any, idx: number) => {
+                                    history.operations.forEach((op: any) => {
                                         const pnlStr = op.pnl !== undefined ? ` | PnL: ${op.pnl >= 0 ? '+' : ''}$${op.pnl.toFixed(2)}` : '';
                                         const statusEmoji = op.status === 'OPEN' ? '🟢' : '⚪';
-                                        details += `${statusEmoji} **${op.action} ${op.coin}** @ $${op.entryPrice?.toFixed(2) || 'N/A'}${pnlStr}\n`;
-                                        details += `   Size: ${op.size} (≈$${op.sizeUSDC?.toFixed(2)}) | Confidence: ${(op.confidence * 100).toFixed(0)}%\n`;
-                                        if (includeReasoning && op.fullReasoning) {
-                                            details += `   **Reasoning:** ${op.fullReasoning}\n`;
-                                        }
-                                        details += `   Time: ${new Date(op.timestamp).toLocaleString()}\n\n`;
-                                    });
-                                }
-
-                                // Format recent logs if no operations but we have logs
-                                if (history.operations.length === 0 && history.recentLogs.length > 0) {
-                                    details += '📝 **RECENT ANALYSIS LOGS**\n\n';
-                                    history.recentLogs.forEach((log: any) => {
-                                        details += `• [${log.type}] ${log.message}\n`;
-                                        if (log.details?.fullReason) {
-                                            details += `  Reasoning: ${log.details.fullReason}\n`;
-                                        }
+                                        details += `${statusEmoji} **${op.action} ${op.coin}** @ $${op.price?.toFixed(2) || 'N/A'}${pnlStr}\n`;
                                     });
                                 }
 
                                 toolResults.push({
                                     type: 'success',
                                     title: coin ? `Dealer History: ${coin}` : 'Dealer Trade History',
-                                    details: details.trim()
+                                    details: details.trim(),
+                                    structuredData: {
+                                        resultType: 'dealer-history',
+                                        items: [{
+                                            type: 'dealer-history',
+                                            totalOperations: history.totalOperations,
+                                            operations: history.operations.map((op: any) => ({
+                                                id: op.id,
+                                                coin: op.coin,
+                                                action: op.action,
+                                                timestamp: op.timestamp,
+                                                price: op.entryPrice || op.price || 0,
+                                                size: op.size,
+                                                pnl: op.pnl,
+                                                confidence: op.confidence,
+                                                reasoning: op.fullReasoning
+                                            })),
+                                            recentLogs: history.recentLogs
+                                        }],
+                                        title: coin ? `History: ${coin}` : 'Dealer History'
+                                    }
                                 });
                             }
                         } catch (err: any) {
