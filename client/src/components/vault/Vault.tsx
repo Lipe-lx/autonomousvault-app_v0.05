@@ -145,7 +145,7 @@ export const Vault: React.FC<VaultProps> = ({
         // Let's assume unlockVault returns any or we await it.
         const success = await (unlockVault as any)();
         if (success) {
-            setActiveTab(AppTab.DASHBOARD);
+            setActiveTab(AppTab.AGENT);
         }
     };
 
