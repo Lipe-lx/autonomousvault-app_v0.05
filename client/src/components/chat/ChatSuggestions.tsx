@@ -5,7 +5,10 @@ import {
     TrendingUp, 
     Wallet, 
     ArrowDownToLine,
-    ChevronRight
+    ChevronRight,
+    Activity,
+    Clock,
+    BarChart3
 } from 'lucide-react';
 
 interface SuggestionCategory {
@@ -40,9 +43,45 @@ const categories: SuggestionCategory[] = [
         color: '#34d399',
         suggestions: [
             'Check my HL balance',
-            'Open long BTC 5x',
             'Show my open positions',
-            'Close my ETH position'
+            'Analyze market for BTC',
+            'Is BTC trending up?'
+        ]
+    },
+    {
+        id: 'dealer',
+        label: 'Vault Dealer',
+        icon: <Activity size={14} />,
+        color: '#E7FE55',
+        suggestions: [
+            'Explain dealer latest decision',
+            'Show dealer trade history',
+            'What is the dealer thinking?',
+            'Show recent dealer logs'
+        ]
+    },
+    {
+        id: 'analysis',
+        label: 'Market Analysis',
+        icon: <BarChart3 size={14} />,
+        color: '#60a5fa',
+        suggestions: [
+            'Show RSI analysis for SOL on 4h',
+            'Show BTC price and indicators',
+            'What is the MACD for ETH?',
+            'Show candlestick chart for BTC'
+        ]
+    },
+    {
+        id: 'automations',
+        label: 'Automations',
+        icon: <Clock size={14} />,
+        color: '#fbbf24',
+        suggestions: [
+            'Swap SOL to USDC in 5 minutes',
+            'Alert me when BTC RSI < 30 on 1h',
+            'Buy BTC on HL when price hits 95k',
+            'Show my scheduled tasks'
         ]
     },
     {
@@ -54,7 +93,7 @@ const categories: SuggestionCategory[] = [
             'Check my wallet balance',
             'Show SOL price',
             'List my token holdings',
-            'Transfer 1 SOL to me'
+            'Transfer 1 SOL'
         ]
     },
     {

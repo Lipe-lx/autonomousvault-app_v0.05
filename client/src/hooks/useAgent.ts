@@ -2015,8 +2015,18 @@ ${recentFills.map((f: any) => {
                             if (!targetCycle && !summaryState.aiSummary) {
                                 toolResults.push({
                                     type: 'success',
-                                    title: 'Hyperliquid Dealer Thinking',
-                                    details: 'O Hyperliquid Dealer ainda não executou nenhum ciclo de análise. Ative o Dealer e aguarde o primeiro ciclo.'
+                                    title: 'Dealer Thinking',
+                                    details: 'The Hyperliquid Dealer has not executed any analysis cycles yet. Activate the Dealer and wait for the first cycle.',
+                                    structuredData: {
+                                        resultType: 'hl-thinking',
+                                        items: [{
+                                            type: 'hl-thinking',
+                                            cycleTimestamp: Date.now(),
+                                            decisions: [],
+                                            assetsAnalyzed: []
+                                        }],
+                                        title: 'Dealer Thinking'
+                                    }
                                 });
                             } else {
                                 // Build HLThinkingItem for structured display
@@ -2045,12 +2055,12 @@ ${recentFills.map((f: any) => {
                                 
                                 toolResults.push({
                                     type: 'success',
-                                    title: 'Hyperliquid Dealer Thinking',
+                                    title: 'Dealer Thinking',
                                     details,
                                     structuredData: {
                                         resultType: 'hl-thinking',
                                         items: [thinkingItem],
-                                        title: 'Hyperliquid Dealer Analysis'
+                                        title: 'Dealer Analysis'
                                     }
                                 });
                             }
