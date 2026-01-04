@@ -484,8 +484,8 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
                             {isAiProcessing ? <Clock size={18} className="animate-spin" /> : <Send size={18} />}
                         </Button>
                     </div>
-                    <p className="text-center mt-3 text-[10px] text-[#747580] tracking-wide">
-                        Vault Operator can make mistakes. Always verify transactions.
+                    <p className="text-center mt-3 text-[12px] text-[#747580] tracking-wide">
+                        The vault operator can make mistakes. Always verify transactions and, if you wish, import your private key to an external wallet and operate manually.
                     </p>
                 </div>
             </div>

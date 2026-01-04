@@ -304,7 +304,7 @@ export default function App() {
                                     Vault Operator
                                 </h2>
                                 <p className="text-[#747580] text-sm hidden sm:block">
-                                    Interact with Vault Operator using natural language.
+                                    Interact and control your vault using natural language.
                                 </p>
                             </div>
                         </div>
@@ -357,10 +357,10 @@ export default function App() {
                                         setActiveTab(AppTab.SOLANA_DEALER_POLICY);
                                     }}
                                     className="flex items-center gap-2 px-3 py-1.5 rounded bg-[#14151a] hover:bg-[#1a1b21] text-[#a0a1a8] hover:text-white text-sm font-medium transition-colors border border-[#232328]"
-                                    title="Solana Dealer Policy"
+                                    title="Define your liquidity pool policy rule for trading on Solana."
                                 >
                                     <Shield size={14} />
-                                    <span className="hidden md:inline">Solana Policy</span>
+                                    <span className="hidden md:inline">Liquidity Rules</span>
                                 </button>
 
                                 {/* Tutorial Tooltip */}
@@ -376,9 +376,9 @@ export default function App() {
                                                     <Shield size={16} className="text-[#E7FE55]" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <h4 className="text-sm font-semibold text-white mb-1">Configure Solana Policy</h4>
+                                                    <h4 className="text-sm font-semibold text-white mb-1">Configure Liquidity Rules</h4>
                                                     <p className="text-xs text-[#a0a1a8] leading-relaxed">
-                                                        Get more accurate LP recommendations by setting your risk preferences and strategy.
+                                                        Get more accurate LP recommendations by setting your risk preferences and strategy. Define your liquidity pool policy rule for trading on Solana.
                                                     </p>
                                                 </div>
                                             </div>
